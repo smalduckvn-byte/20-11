@@ -1287,6 +1287,7 @@ body,#info,#start-label,.passcode-title,.passcode-subtitle,.letter-content,
 (function(){
   const photoOrder = [14,7,16,17,6,10,1,27,4,32,23,22,24,18,26,15,13,5,29,28,2,20,19,12,3,25,11,30,8,21,9,31];
   window.PHOTO_ORDER = photoOrder;
+  window.__ASSET_DATA__['assets/opening-flower.png'] = window.__ASSET_DATA__['image/p1.png'];
 })();
 for (let i = 1; i <= 32; i++) {
   const extension = i <= 16 ? 'png' : 'jpg';
@@ -1376,8 +1377,8 @@ window.CUSTOM_APP_CONFIG = {
   passcode: "2011",
   passcodeTitle: "Mật khẩu yêu thương",
   passcodeSubtitle: "Món quà 20/11 dành riêng cho Thầy và cô",
-  morphTexts: ["Tri Ân", "Thầy và cô", "20 / 11", "Người lái đò thầm lặng"],
-  particleImage: "image/p1.png",
+  morphTexts: ["Tri Ân", "Ngày Nhà giáo Việt Nam", "20 / 11", "Người lái đò thầm lặng"],
+  particleImage: "assets/opening-flower.png",
   sphereImages: window.PHOTO_ORDER.map(photo => `image/p${photo}.${photo <= 16 ? "png" : "jpg"}`),
   burstWishTexts: [
     "Chúc mừng Ngày Nhà giáo Việt Nam 20/11",
@@ -1411,7 +1412,7 @@ window.CUSTOM_APP_CONFIG = {
             passcode: '0308',
             passcodeTitle: 'Mật khẩu yêu thương',
             passcodeSubtitle: 'Món quà 20/11 dành riêng cho Thầy và cô',
-            morphTexts: ['Tri Ân', 'Thầy và cô', '20 / 11'],
+            morphTexts: ['Tri Ân', 'Ngày Nhà giáo Việt Nam', '20 / 11'],
             particleImage: 'assets/pngegg.png',
             sphereImages: [],
             burstWishTexts: ['Chúc mừng Ngày Nhà giáo Việt Nam 20/11', 'Kính chúc Thầy Cô mạnh khỏe', 'Tri ân Thầy Cô', 'Chúc Thầy Cô luôn vui và hạnh phúc'],
@@ -2117,7 +2118,7 @@ window.CUSTOM_APP_CONFIG = {
             }
             async function startAutoPlay() {
                 isScatterPhase = false;
-                const morphTexts = cfg.morphTexts && cfg.morphTexts.length ? cfg.morphTexts : ['Tri Ân', 'Thầy và cô', '20 / 11'];
+                const morphTexts = cfg.morphTexts && cfg.morphTexts.length ? cfg.morphTexts : ['Tri Ân', 'Ngày Nhà giáo Việt Nam', '20 / 11'];
                 for (const text of morphTexts) {
                     showText(text);
                     await sleep(MORPH_WAIT_MS + SEQUENCE_HOLD_MS);
