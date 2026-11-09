@@ -1288,6 +1288,7 @@ body,#info,#start-label,.passcode-title,.passcode-subtitle,.letter-content,
   const photoOrder = [14,7,16,17,6,10,1,27,4,32,23,22,24,18,26,15,13,5,29,28,2,20,19,12,3,25,11,30,8,21,9,31];
   window.PHOTO_ORDER = photoOrder;
   window.__ASSET_DATA__['assets/opening-flower.png'] = window.__ASSET_DATA__['image/p1.png'];
+  window.__ASSET_DATA__['image/letter-emblem.png'] = 'images-20-11/letter-emblem.png';
 })();
 for (let i = 1; i <= 32; i++) {
   const extension = i <= 16 ? 'png' : 'jpg';
@@ -1342,12 +1343,19 @@ for (let i = 1; i <= 32; i++) {
                 <section class="letter-prose">
                     <div class="letter-content" aria-label="Lời chúc"></div>
                     <div class="letter-signoff"><span class="letter-signoff-line"></span><span>Tri ân, <b>20/11</b> <i class="lheart">♡</i></span></div>
+                    <div class="narration-controls">
+                        <button type="button" id="narration-toggle" aria-pressed="false">
+                            <span aria-hidden="true">▶</span>
+                            <span>Nghe lời dẫn</span>
+                        </button>
+                        <p id="narration-status" role="status" aria-live="polite"></p>
+                    </div>
                 </section>
                 <div class="letter-photo-stage">
                     <div class="letter-photo-halo" aria-hidden="true"></div>
                     <div class="letter-photo-placeholder" aria-hidden="true"><span class="letter-placeholder-mark">❀</span><span>Một bó hoa nhỏ<br>kính tặng Thầy Cô</span></div>
                     <div class="letter-image-wrap" id="letterImageWrap" style="display: none">
-                        <img class="letter-inline-image" id="letterInlineImage" src="" alt="Bó hoa tri ân Thầy Cô ngày 20/11" />
+                        <img class="letter-inline-image" id="letterInlineImage" src="" alt="Huy hiệu Trường THPT số 1 An Nhơn vẽ trên bảng phấn" />
                         <span class="letter-image-caption">♥</span>
                     </div>
                     <span class="letter-photo-stamp" aria-hidden="true">20<span>✦</span>11</span>
@@ -1387,8 +1395,8 @@ window.CUSTOM_APP_CONFIG = {
     "Tri ân những bài học và yêu thương Thầy Cô trao"
   ],
   letter: {
-    text: "Nhân ngày Nhà giáo Việt Nam 20/11, chúng em xin gửi đến Thầy Cô lời tri ân chân thành.\n\nCảm ơn Thầy Cô đã tận tâm dạy dỗ, truyền cảm hứng và kiên nhẫn đồng hành cùng chúng em.\n\nKính chúc Thầy Cô thật nhiều sức khỏe, niềm vui và luôn giữ trọn tình yêu với nghề giáo.",
-    image: "image/p13.png",
+    text: "Tháng năm dưới mái trường được dệt nên từ những điều bình dị: tiếng trống đầu giờ, trang vở mới, lời giảng tận tâm và nụ cười bạn bè.\n\nThầy Cô như những người lái đò thầm lặng, kiên nhẫn đưa chúng em qua từng bài học. Từ nét phấn trên bảng đến một lời động viên đúng lúc, mỗi điều đều giúp chúng em trưởng thành.\n\nNhững giờ học, hoạt động tập thể và kỷ niệm bên nhau sẽ còn ở lại thật lâu. Hôm nay, chúng em muốn nói lời cảm ơn vì Thầy Cô đã tin tưởng, chỉ bảo và đồng hành cùng chúng em.\n\nKính chúc Thầy Cô luôn mạnh khỏe, bình an và giữ trọn tình yêu với nghề. Tri ân Thầy Cô — lưu giữ yêu thương.",
+    image: "image/letter-emblem.png",
     caption: "Tri ân Thầy Cô nhân ngày Nhà giáo Việt Nam 20/11"
   },
   bgMusic: "music/music.mp3",
@@ -2065,6 +2073,7 @@ window.CUSTOM_APP_CONFIG = {
                                 startBgMusic();
                             } catch (_) { }
                         }
+                        if (typeof window.startNarration === 'function') window.startNarration();
                         triggered = true;
                         wrap.style.display = 'none';
                         startAutoPlay();
@@ -2076,6 +2085,7 @@ window.CUSTOM_APP_CONFIG = {
                             startBgMusic();
                         } catch (_) { }
                     }
+                    if (typeof window.startNarration === 'function') window.startNarration();
                     ringFill.style.transition = 'stroke-dashoffset 1s linear';
                     ringFill.style.strokeDashoffset = '163.36';
                     void ringFill.offsetHeight;
@@ -2107,6 +2117,7 @@ window.CUSTOM_APP_CONFIG = {
                                 stopBgMusic();
                             } catch (_) { }
                         }
+                        if (typeof window.stopNarration === 'function') window.stopNarration();
                         ringFill.style.transition = 'stroke-dashoffset 0.3s ease';
                         ringFill.style.strokeDashoffset = '163.36';
                     }
@@ -3945,7 +3956,76 @@ window.setTimeout(function(){
  window.addEventListener('resize',function(){var fr=frame();if(fr&&fr.classList.contains('visible'))fit();});
 })();
 </script>
+<style id="narration-controls-style">
+    .narration-controls{display:flex;flex-direction:column;align-items:flex-start;gap:.35rem;margin-top:1rem}
+    #narration-toggle{display:inline-flex;align-items:center;gap:.55rem;padding:.65rem 1rem;border:1px solid rgba(151,91,104,.45);border-radius:999px;background:rgba(255,249,245,.82);color:#754453;font:500 .9rem "Be Vietnam Pro",sans-serif;cursor:pointer;transition:background .2s ease,transform .2s ease}
+    #narration-toggle:hover{background:#fff;transform:translateY(-1px)}
+    #narration-toggle:focus-visible{outline:2px solid #975b68;outline-offset:3px}
+    #narration-status{min-height:1em;margin:0;color:#875e68;font:400 .78rem "Be Vietnam Pro",sans-serif}
+</style>
+<script id="narration-controls-script">
+    (() => {
+        const button = document.getElementById("narration-toggle");
+        const status = document.getElementById("narration-status");
+        const narrationAudio = new Audio(window.assetURL("audio/12A12-tri-an-thay-co-20-11.mp3"));
+        narrationAudio.preload = "auto";
 
+        if (!button || !status) return;
+
+        const setPlaying = (playing) => {
+            button.setAttribute("aria-pressed", String(playing));
+            button.innerHTML = playing
+                ? '<span aria-hidden="true">■</span><span>Dừng lời đọc</span>'
+                : '<span aria-hidden="true">▶</span><span>Nghe lời dẫn</span>';
+        };
+
+        const startNarration = () => {
+            narrationAudio.currentTime = 0;
+            const playback = narrationAudio.play();
+            if (playback && typeof playback.catch === "function") {
+                playback.catch((error) => {
+                    setPlaying(false);
+                    status.textContent = "Không thể tự phát lời dẫn. Hãy nhấn “Nghe lời dẫn” để thử lại.";
+                    console.warn("Không thể phát lời dẫn:", error);
+                });
+            }
+        };
+        const stopNarration = () => {
+            narrationAudio.pause();
+            narrationAudio.currentTime = 0;
+        };
+        window.startNarration = startNarration;
+        window.stopNarration = stopNarration;
+
+        narrationAudio.addEventListener("play", () => {
+            setPlaying(true);
+            status.textContent = "Đang phát lời dẫn…";
+        });
+        narrationAudio.addEventListener("pause", () => {
+            setPlaying(false);
+            status.textContent = "";
+        });
+        narrationAudio.addEventListener("ended", () => {
+            setPlaying(false);
+            status.textContent = "";
+        });
+        narrationAudio.addEventListener("error", () => {
+            setPlaying(false);
+            status.textContent = "Không tải được tệp lời dẫn.";
+            console.error("Không tải được tệp lời dẫn:", narrationAudio.error);
+        });
+
+        button.addEventListener("click", () => {
+            if (!narrationAudio.paused) {
+                narrationAudio.pause();
+                narrationAudio.currentTime = 0;
+                return;
+            }
+            startNarration();
+        });
+
+    })();
+</script>
 </body>
 
 </html>
