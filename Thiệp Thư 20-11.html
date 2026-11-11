@@ -3955,6 +3955,8 @@ window.setTimeout(function(){
 #cupid-letter-frame .letter-content{background:none!important}
 #cupid-letter-frame .letter-content .lp{background:repeating-linear-gradient(transparent 0 calc(1.6em - 1px),rgba(201,122,147,.17) calc(1.6em - 1px) 1.6em);margin:0 0 .75em!important}
 #cupid-letter-frame .letter-content .lp:last-of-type{margin-bottom:0!important}
+#cupid-letter-frame .letter-content .narration-sentence{transition:color .25s ease,background-color .25s ease}
+#cupid-letter-frame .letter-content .narration-sentence.is-current{color:#754453;background-color:rgba(244,215,221,.7);border-radius:.18em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 </style>
 <script id="letter-fit-js">
 (function(){
@@ -3989,71 +3991,84 @@ window.setTimeout(function(){
         narrationAudio.preload = "auto";
         window.narrationAudio = narrationAudio;
 
-        const revealSectionsByAudio = (letterContent, audio) => {
+        const narrationText = window.CUSTOM_APP_CONFIG?.letter?.text || "";
+        let syncedLetter = null;
+        let syncedAudio = null;
+        let narrationSentences = [];
+
+        const prepareNarrationText = (letterContent, audio) => {
             if (!letterContent || !audio) return;
-            const paragraphs = String(CUPID_LETTER_TEXT).split(/\n\s*\n/).map((block) => block.trim()).filter(Boolean);
-            if (!paragraphs.length) return;
+            if (syncedLetter === letterContent && syncedAudio === audio) return;
 
-            letterContent.innerHTML = '';
-            letterContent.classList.remove('typing-complete');
-            const paragraphEls = paragraphs.map((text, index) => {
-                const p = document.createElement('p');
-                p.className = 'lp' + (index === 0 ? ' lead' : '');
-                p.textContent = text;
-                p.style.opacity = '0';
-                p.style.transform = 'translateY(8px)';
-                p.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+            syncedLetter = letterContent;
+            syncedAudio = audio;
+            letterContent.replaceChildren();
+            letterContent.classList.remove("typing-complete");
+            narrationSentences = [];
+
+            const paragraphs = narrationText.split(/\n\s*\n/).map((text) => text.trim()).filter(Boolean);
+            paragraphs.forEach((paragraph, paragraphIndex) => {
+                const p = document.createElement("p");
+                p.className = "lp" + (paragraphIndex === 0 ? " lead" : "");
                 letterContent.appendChild(p);
-                return p;
-            });
 
-            const totalDuration = Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : paragraphs.length * 9;
-            const sectionStarts = paragraphs.map((_, index) => {
-                const ideal = (index / Math.max(paragraphs.length, 1)) * totalDuration;
-                return index === 0 ? 0 : ideal + (index * 0.6);
-            });
+                const sentences = paragraph.match(/[^.!?]+(?:[.!?]+|$)/g) || [paragraph];
+                sentences.forEach((sentence) => {
+                    const text = sentence.trim();
+                    if (!text) return;
 
-            const updateVisibleSections = () => {
-                const currentTime = Number.isFinite(audio.currentTime) ? audio.currentTime : 0;
-                let visibleCount = 0;
-                for (let i = 0; i < paragraphEls.length; i++) {
-                    const shouldShow = currentTime >= sectionStarts[i];
-                    paragraphEls[i].style.opacity = shouldShow ? '1' : '0';
-                    paragraphEls[i].style.transform = shouldShow ? 'translateY(0)' : 'translateY(8px)';
-                    if (shouldShow) visibleCount = i + 1;
-                }
-                if (visibleCount === paragraphEls.length && !audio.paused) {
-                    letterContent.classList.add('typing-complete');
-                }
-            };
-
-            window.__narrationSync = (box, currentAudio) => {
-                if (!box || !currentAudio) return;
-                revealSectionsByAudio(box, currentAudio);
-            };
-
-            const tick = () => {
-                if (!letterContent.isConnected) return;
-                updateVisibleSections();
-                if (!audio.paused && !audio.ended) {
-                    requestAnimationFrame(tick);
-                }
-            };
-            updateVisibleSections();
-            if (!audio.paused) requestAnimationFrame(tick);
-            audio.addEventListener('timeupdate', updateVisibleSections, { once: false });
-            audio.addEventListener('play', () => requestAnimationFrame(tick));
-            audio.addEventListener('pause', () => {
-                letterContent.classList.add('typing-complete');
-            });
-            audio.addEventListener('ended', () => {
-                paragraphEls.forEach((p) => {
-                    p.style.opacity = '1';
-                    p.style.transform = 'translateY(0)';
+                    const span = document.createElement("span");
+                    span.className = "narration-sentence";
+                    p.appendChild(span);
+                    const separator = document.createTextNode("");
+                    narrationSentences.push({
+                        text,
+                        characters: Array.from(text),
+                        element: span,
+                        separator,
+                        weight: Array.from(text).length + (/[.!?]$/.test(text) ? 8 : 0)
+                    });
+                    p.appendChild(separator);
                 });
-                letterContent.classList.add('typing-complete');
             });
+
+            const totalWeight = narrationSentences.reduce((sum, sentence) => sum + sentence.weight, 0);
+            const updateText = () => {
+                if (!Number.isFinite(audio.duration) || audio.duration <= 0 || !totalWeight) return;
+                let elapsedWeight = Math.max(0, Math.min(audio.currentTime / audio.duration, 1)) * totalWeight;
+
+                narrationSentences.forEach((sentence) => {
+                    const progress = Math.max(0, Math.min(elapsedWeight / sentence.weight, 1));
+                    const visibleCharacters = Math.floor(progress * sentence.characters.length);
+                    sentence.element.textContent = sentence.characters.slice(0, visibleCharacters).join("");
+                    sentence.element.classList.toggle("is-current", elapsedWeight >= 0 && elapsedWeight < sentence.weight);
+                    sentence.separator.textContent = progress === 1 ? " " : "";
+                    elapsedWeight -= sentence.weight;
+                });
+
+                if (audio.ended) letterContent.classList.add("typing-complete");
+                else letterContent.classList.remove("typing-complete");
+            };
+
+            audio.addEventListener("timeupdate", updateText);
+            audio.addEventListener("durationchange", updateText);
+            audio.addEventListener("loadedmetadata", updateText);
+            audio.addEventListener("seeked", updateText);
+            audio.addEventListener("ended", updateText);
+            letterContent.__updateNarrationText = updateText;
+            letterContent.__showFullTranscript = () => {
+                narrationSentences.forEach((sentence) => {
+                    sentence.element.textContent = sentence.text;
+                    sentence.element.classList.remove("is-current");
+                    sentence.separator.textContent = " ";
+                });
+                letterContent.classList.add("typing-complete");
+            };
+            if (audio.error) letterContent.__showFullTranscript();
+            else updateText();
         };
+
+        window.__narrationSync = prepareNarrationText;
 
         if (!button || !status) return;
 
@@ -4065,12 +4080,16 @@ window.setTimeout(function(){
         };
 
         const startNarration = () => {
+            const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
+            if (letterContent) prepareNarrationText(letterContent, narrationAudio);
             narrationAudio.currentTime = 0;
             const playback = narrationAudio.play();
             if (playback && typeof playback.catch === "function") {
                 playback.catch((error) => {
                     setPlaying(false);
                     status.textContent = "Không thể tự phát lời dẫn. Hãy nhấn “Nghe lời dẫn” để thử lại.";
+                    const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
+                    if (letterContent?.__showFullTranscript) letterContent.__showFullTranscript();
                     console.warn("Không thể phát lời dẫn:", error);
                 });
             }
@@ -4084,9 +4103,7 @@ window.setTimeout(function(){
 
         narrationAudio.addEventListener("play", () => {
             const letterContent = document.querySelector('#cupid-letter-frame .letter-content');
-            if (letterContent && typeof window.__narrationSync === 'function') {
-                window.__narrationSync(letterContent, narrationAudio);
-            }
+            if (letterContent) prepareNarrationText(letterContent, narrationAudio);
             setPlaying(true);
             status.textContent = "Đang phát lời dẫn…";
         });
@@ -4101,6 +4118,8 @@ window.setTimeout(function(){
         narrationAudio.addEventListener("error", () => {
             setPlaying(false);
             status.textContent = "Không tải được tệp lời dẫn.";
+            const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
+            if (letterContent?.__showFullTranscript) letterContent.__showFullTranscript();
             console.error("Không tải được tệp lời dẫn:", narrationAudio.error);
         });
 
@@ -4108,6 +4127,8 @@ window.setTimeout(function(){
             if (!narrationAudio.paused) {
                 narrationAudio.pause();
                 narrationAudio.currentTime = 0;
+                const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
+                if (letterContent?.__updateNarrationText) letterContent.__updateNarrationText();
                 return;
             }
             startNarration();
