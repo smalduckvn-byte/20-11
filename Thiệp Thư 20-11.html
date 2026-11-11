@@ -1339,6 +1339,10 @@ for (let i = 1; i <= 32; i++) {
                 <span class="letter-topline-symbol" aria-hidden="true">♡</span>
             </div>
             <h2 class="letter-title">Kính gửi Thầy Cô <em>lời tri ân chân thành.</em></h2>
+            <div class="narration-cue-zone" aria-hidden="true">
+                <div class="narration-cue"></div>
+                <div class="narration-cue"></div>
+            </div>
             <div class="letter-layout">
                 <section class="letter-prose">
                     <div class="letter-content" aria-label="Lời chúc"></div>
@@ -3957,6 +3961,22 @@ window.setTimeout(function(){
 #cupid-letter-frame .letter-content .lp:last-of-type{margin-bottom:0!important}
 #cupid-letter-frame .letter-content .narration-sentence{transition:color .25s ease,background-color .25s ease}
 #cupid-letter-frame .letter-content .narration-sentence.is-current{color:#754453;background-color:rgba(244,215,221,.7);border-radius:.18em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+#cupid-letter-frame.narration-cue-mode .letter-content{visibility:hidden}
+#cupid-letter-frame .narration-cue-zone{position:absolute;z-index:12;left:8%;right:8%;top:38%;bottom:18%;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .85s ease,visibility .85s;font-family:"Be Vietnam Pro",sans-serif}
+#cupid-letter-frame.narration-cue-mode .narration-cue-zone{opacity:1;visibility:visible}
+#cupid-letter-frame .narration-cue{position:absolute;left:0;width:100%;min-height:38%;display:flex;align-items:center;justify-content:center;text-align:center;color:#754453;font-size:clamp(20px,2.3vw,28px);font-weight:600;line-height:1.35;letter-spacing:.015em;text-wrap:balance;text-shadow:0 1px 0 rgba(255,255,255,.82),0 0 16px rgba(201,122,147,.3);opacity:0;transform:translateY(10px) scale(.975);transition:opacity .52s ease-in-out,transform .57s cubic-bezier(.22,1,.36,1)}
+#cupid-letter-frame .narration-cue:first-child{top:2%}
+#cupid-letter-frame .narration-cue:last-child{top:52%}
+#cupid-letter-frame .narration-cue.show{opacity:1;transform:translateY(0) scale(1)}
+#cupid-letter-frame .narration-cue.compact{font-size:clamp(17px,1.95vw,24px)}
+@media(max-width:759px){
+ #cupid-letter-frame .narration-cue-zone{left:7%;right:7%;top:36%;bottom:16%}
+ #cupid-letter-frame .narration-cue{font-size:clamp(17px,4.4vw,22px);line-height:1.3}
+ #cupid-letter-frame .narration-cue.compact{font-size:clamp(15px,3.8vw,19px)}
+}
+@media(prefers-reduced-motion:reduce){
+ #cupid-letter-frame .narration-cue-zone,#cupid-letter-frame .narration-cue{transition:none}
+}
 </style>
 <script id="letter-fit-js">
 (function(){
@@ -3987,6 +4007,8 @@ window.setTimeout(function(){
     (() => {
         const button = document.getElementById("narration-toggle");
         const status = document.getElementById("narration-status");
+        const letterFrame = document.getElementById("cupid-letter-frame");
+        const cueSlots = letterFrame ? Array.from(letterFrame.querySelectorAll(".narration-cue")) : [];
         const narrationAudio = new Audio(window.assetURL("audio/12A12-tri-an-thay-co-20-11.mp3"));
         narrationAudio.preload = "auto";
         window.narrationAudio = narrationAudio;
@@ -3995,6 +4017,35 @@ window.setTimeout(function(){
         let syncedLetter = null;
         let syncedAudio = null;
         let narrationSentences = [];
+        let narrationCues = [];
+        let cueActiveIndex = -1;
+        let cueSlotIndex = -1;
+
+        const showCue = (index) => {
+            if (index === cueActiveIndex) return;
+            cueSlots.forEach((slot) => slot.classList.remove("show"));
+            if (index < 0) {
+                cueSlots.forEach((slot) => {
+                    slot.classList.remove("compact");
+                    slot.textContent = "";
+                });
+                cueActiveIndex = -1;
+                cueSlotIndex = -1;
+                return;
+            }
+            if (!cueSlots.length) return;
+
+            const nextSlotIndex = cueSlotIndex < 0 ? 0 : 1 - cueSlotIndex;
+            const slot = cueSlots[nextSlotIndex];
+            const cue = narrationCues[index];
+            slot.textContent = cue.text;
+            slot.classList.toggle("compact", cue.text.length > 31);
+            cueActiveIndex = index;
+            cueSlotIndex = nextSlotIndex;
+            requestAnimationFrame(() => {
+                if (cueActiveIndex === index) slot.classList.add("show");
+            });
+        };
 
         const prepareNarrationText = (letterContent, audio) => {
             if (!letterContent || !audio) return;
@@ -4002,6 +4053,12 @@ window.setTimeout(function(){
 
             syncedLetter = letterContent;
             syncedAudio = audio;
+            cueActiveIndex = -1;
+            cueSlotIndex = -1;
+            cueSlots.forEach((slot) => {
+                slot.classList.remove("show", "compact");
+                slot.textContent = "";
+            });
             letterContent.replaceChildren();
             letterContent.classList.remove("typing-complete");
             narrationSentences = [];
@@ -4032,10 +4089,32 @@ window.setTimeout(function(){
                 });
             });
 
+            narrationCues = narrationSentences.flatMap(({ text }) => {
+                const words = text.match(/\S+/g) || [];
+                const phrases = [];
+                let phrase = "";
+                words.forEach((word) => {
+                    if (phrase && phrase.length + word.length + 1 > 48) {
+                        phrases.push(phrase);
+                        phrase = "";
+                    }
+                    phrase = phrase ? `${phrase} ${word}` : word;
+                });
+                if (phrase) phrases.push(phrase);
+                return phrases.map((cue) => ({
+                    text: cue,
+                    weight: Array.from(cue).length + (/[.!?,;:]$/.test(cue) ? 5 : 0)
+                }));
+            });
+
             const totalWeight = narrationSentences.reduce((sum, sentence) => sum + sentence.weight, 0);
+            const totalCueWeight = narrationCues.reduce((sum, cue) => sum + cue.weight, 0);
             const updateText = () => {
-                if (!Number.isFinite(audio.duration) || audio.duration <= 0 || !totalWeight) return;
-                let elapsedWeight = Math.max(0, Math.min(audio.currentTime / audio.duration, 1)) * totalWeight;
+                if (!Number.isFinite(audio.duration) || audio.duration <= 0 || !totalWeight || !totalCueWeight) return;
+                const audioProgress = Math.max(0, Math.min(audio.currentTime / audio.duration, 1));
+                let elapsedWeight = audioProgress * totalWeight;
+                let elapsedCueWeight = audioProgress * totalCueWeight;
+                let activeCueIndex = -1;
 
                 narrationSentences.forEach((sentence) => {
                     const progress = Math.max(0, Math.min(elapsedWeight / sentence.weight, 1));
@@ -4045,6 +4124,11 @@ window.setTimeout(function(){
                     sentence.separator.textContent = progress === 1 ? " " : "";
                     elapsedWeight -= sentence.weight;
                 });
+                narrationCues.forEach((cue, index) => {
+                    if (elapsedCueWeight >= 0 && elapsedCueWeight < cue.weight) activeCueIndex = index;
+                    elapsedCueWeight -= cue.weight;
+                });
+                showCue(activeCueIndex);
 
                 if (audio.ended) letterContent.classList.add("typing-complete");
                 else letterContent.classList.remove("typing-complete");
@@ -4062,6 +4146,7 @@ window.setTimeout(function(){
                     sentence.element.classList.remove("is-current");
                     sentence.separator.textContent = " ";
                 });
+                showCue(-1);
                 letterContent.classList.add("typing-complete");
             };
             if (audio.error) letterContent.__showFullTranscript();
@@ -4087,6 +4172,7 @@ window.setTimeout(function(){
             if (playback && typeof playback.catch === "function") {
                 playback.catch((error) => {
                     setPlaying(false);
+                    letterFrame?.classList.remove("narration-cue-mode");
                     status.textContent = "Không thể tự phát lời dẫn. Hãy nhấn “Nghe lời dẫn” để thử lại.";
                     const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
                     if (letterContent?.__showFullTranscript) letterContent.__showFullTranscript();
@@ -4104,6 +4190,7 @@ window.setTimeout(function(){
         narrationAudio.addEventListener("play", () => {
             const letterContent = document.querySelector('#cupid-letter-frame .letter-content');
             if (letterContent) prepareNarrationText(letterContent, narrationAudio);
+            letterFrame?.classList.add("narration-cue-mode");
             setPlaying(true);
             status.textContent = "Đang phát lời dẫn…";
         });
@@ -4113,10 +4200,14 @@ window.setTimeout(function(){
         });
         narrationAudio.addEventListener("ended", () => {
             setPlaying(false);
+            letterFrame?.classList.remove("narration-cue-mode");
+            const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
+            if (letterContent?.__showFullTranscript) letterContent.__showFullTranscript();
             status.textContent = "";
         });
         narrationAudio.addEventListener("error", () => {
             setPlaying(false);
+            letterFrame?.classList.remove("narration-cue-mode");
             status.textContent = "Không tải được tệp lời dẫn.";
             const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
             if (letterContent?.__showFullTranscript) letterContent.__showFullTranscript();
