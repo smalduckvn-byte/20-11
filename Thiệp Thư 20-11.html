@@ -188,6 +188,40 @@ window.assetURL = function(path){return window.__ASSET_DATA__[path] || path};
             opacity: 1;
         }
 
+        #sound-start-caption {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            z-index: 450;
+            width: min(940px, calc(100vw - 36px));
+            max-height: 76vh;
+            box-sizing: border-box;
+            overflow-y: auto;
+            padding: clamp(18px, 3vw, 30px);
+            border: 1px solid rgba(255, 215, 229, 0.45);
+            border-radius: 24px;
+            background: rgba(43, 13, 35, 0.62);
+            color: #fff0f5;
+            font: 500 clamp(18px, 2.2vw, 27px)/1.6 Georgia, serif;
+            text-align: center;
+            text-shadow: 0 0 14px rgba(255, 138, 184, 0.65);
+            box-shadow: 0 8px 32px rgba(219, 81, 137, 0.24);
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+            transform: translate(-50%, -50%) scale(0.98);
+        }
+
+        #sound-start-caption.visible {
+            visibility: visible;
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        #sound-start-caption.is-title {
+            font-size: clamp(32px, 4.8vw, 50px);
+        }
+
         #btn-flying-corner {
             position: fixed;
             bottom: 20px;
@@ -1272,6 +1306,7 @@ body,#info,#start-label,.passcode-title,.passcode-subtitle,.letter-content,
 
     <div id="transition-overlay"></div>
     <div id="sphere-click-hint" aria-hidden="true">Click vào nhé</div>
+    <div id="sound-start-caption" aria-live="polite">Tháng 11 lại về</div>
     <button type="button" id="btn-flying-corner" aria-label="Ảnh bay lên">
         💌
     </button>
@@ -1317,6 +1352,76 @@ for (let i = 1; i <= 32; i++) {
  document.addEventListener('keydown',e=>{if(!gallery.classList.contains('open'))return;if(e.key==='Escape')close();if(e.key==='ArrowLeft')show(active-1);if(e.key==='ArrowRight')show(active+1)});
  gallery.addEventListener('touchstart',e=>{swipeStart=e.touches[0]?.clientX},{passive:true});
  gallery.addEventListener('touchend',e=>{if(swipeStart===null)return;const dx=e.changedTouches[0].clientX-swipeStart;if(Math.abs(dx)>50)show(active+(dx<0?1:-1));swipeStart=null},{passive:true});
+})();
+</script>
+<script>
+(function () {
+  const caption = document.getElementById('sound-start-caption');
+  const segments = [
+    'Tháng 11 lại về',
+    'Mang theo cái se lạnh của những ngày cuối năm và cũng là dịp để chúng em bày tỏ lòng biết ơn sâu sắc đến thầy cô – những người lái đò thầm lặng đã và đang dìu dắt bao thế hệ học trò qua những dòng sông tri thức.',
+    'Có lẽ, mỗi người trong chúng em đều sẽ có những kỷ niệm riêng về thầy cô. Đó có thể là những lần được thầy cô tận tình chỉ bảo, là ánh mắt ấm áp của thầy cô khi chúng em đạt thành tích tốt, hay là những lời động viên khi chúng em vấp ngã. Thầy cô đã không chỉ dạy dỗ chúng em những kiến thức, mà còn rèn luyện cho chúng em lòng dũng cảm, sự kiên trì và tinh thần trách nhiệm. Những bài giảng của thầy cô không chỉ là kiến thức sách vở, mà còn là những bài học về cuộc sống, về cách làm người. Thầy cô đã dành trọn tâm huyết và cả thanh xuân của mình để xây dựng nền tảng cho chúng em. Bao năm qua, thầy cô đã âm thầm cống hiến, hy sinh để mang đến cho chúng em những điều tốt đẹp nhất. Có những lúc, chúng em chưa thật sự hiểu hết những gì thầy cô nhắn nhủ, nhưng đến hôm nay khi nhìn lại, chúng em mới thấy những bài học ấy thật quý giá biết bao.',
+    'Những ngày đầu tiên, khi chúng em bước chân vào ngôi trường THPT Châu Văn An, chúng em chưa quen cách học, chưa thuộc tên thầy cô, chính các thầy cô đã nhẹ nhàng chỉ bảo, động viên chúng em từng chút một. Thầy cô là những người lái đò thầm lặng, mỗi bài giảng, mỗi nụ cười, mỗi lời nhắc nhở đều là những ngọn đèn soi sáng con đường tri thức của chúng em. Công lao ấy, chúng em luôn khắc cốt ghi tâm. Thầy cô không chỉ là người truyền đạt kiến thức, mà còn là những người cha, người mẹ thứ hai dạy cho chúng em biết cách làm người, biết yêu thương, biết sẻ chia và biết ước mơ. Mỗi khi chúng em vấp ngã, thầy cô là người nâng đỡ; mỗi khi chúng em lạc lối, thầy cô là ngọn hải đăng soi đường. Những lời dạy của thầy cô sẽ mãi là hành trang quý giá cho chúng em tự tin bước vào đời.',
+    'Có một nghề bụi phấn bám đầy tay, người ta bảo đó là nghề cao quý nhất. Có một nghề không trồng cây vào đất, mà mang lại cho đời đầy trái ngọt hoa thơm.',
+    'Nhân ngày Nhà giáo Việt Nam 20/11, chúng em xin được gửi lời tri ân sâu sắc nhất đến thầy cô. Xin cảm ơn thầy cô vì đã dành trọn yêu thương và tâm huyết cho chúng em. Nhờ có thầy cô mà chúng em vững bước hơn trên con đường tương lai, biết tự tin vào chính mình và biết sống với ước mơ, hoài bão.',
+    'Kính chúc thầy cô luôn mạnh khỏe, bình an và mãi giữ được ngọn lửa nhiệt huyết trong sự nghiệp trồng người cao cả. Chúng em sẽ luôn trân trọng và mang theo những bài học của thầy cô như một hành trang quý báu trên con đường đời. Thầy cô là ngọn đèn soi sáng, là ngọn lửa sưởi ấm trong cuộc đời mỗi chúng em.',
+    'Một lần nữa, xin gửi tới thầy cô lòng biết ơn chân thành và lời chúc tốt đẹp nhất. Chúng em sẽ cố gắng học tập, rèn luyện để xứng đáng với những gì thầy cô trao gửi. Chúng em xin cảm ơn thầy cô vì tất cả!'
+  ];
+  const weights = segments.map((text, index) => {
+    const punctuationWeight = /[.!?]$/.test(text) ? 5 : 0;
+    return Math.max(index === 0 ? 45 : 0, Array.from(text).length + punctuationWeight);
+  });
+  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
+
+  window.attachNarrationCaptions = function (audio) {
+    let activeSegment = -1;
+    let transitionTimer = null;
+
+    const hideCaption = () => {
+      window.clearTimeout(transitionTimer);
+      transitionTimer = null;
+      activeSegment = -1;
+      caption.classList.remove('visible', 'is-title');
+    };
+
+    const updateCaption = () => {
+      if (!Number.isFinite(audio.duration) || audio.duration <= 0) return;
+      if (audio.paused || audio.ended) {
+        hideCaption();
+        return;
+      }
+
+      const progress = Math.max(0, Math.min(audio.currentTime / audio.duration, 1));
+      let remainingWeight = progress * totalWeight;
+      let segmentIndex = weights.findIndex((weight) => {
+        if (remainingWeight < weight) return true;
+        remainingWeight -= weight;
+        return false;
+      });
+      if (segmentIndex < 0) segmentIndex = segments.length - 1;
+      if (segmentIndex === activeSegment) return;
+
+      activeSegment = segmentIndex;
+      caption.classList.remove('visible', 'is-title');
+      window.clearTimeout(transitionTimer);
+      transitionTimer = window.setTimeout(() => {
+        transitionTimer = null;
+        if (audio.paused || audio.ended) return;
+        caption.textContent = segments[segmentIndex];
+        caption.classList.toggle('is-title', segmentIndex === 0);
+        caption.classList.add('visible');
+      }, segmentIndex === 0 ? 0 : 250);
+    };
+
+    audio.addEventListener('playing', updateCaption);
+    audio.addEventListener('timeupdate', updateCaption);
+    audio.addEventListener('seeked', updateCaption);
+    audio.addEventListener('durationchange', updateCaption);
+    audio.addEventListener('loadedmetadata', updateCaption);
+    audio.addEventListener('pause', hideCaption);
+    audio.addEventListener('ended', hideCaption);
+    audio.addEventListener('error', hideCaption);
+  };
 })();
 </script>
 
@@ -4012,6 +4117,7 @@ window.setTimeout(function(){
         const narrationAudio = new Audio(window.assetURL("audio/12A12-tri-an-thay-co-20-11.mp3"));
         narrationAudio.preload = "auto";
         window.narrationAudio = narrationAudio;
+        window.attachNarrationCaptions(narrationAudio);
 
         const narrationText = window.CUSTOM_APP_CONFIG?.letter?.text || "";
         let syncedLetter = null;
