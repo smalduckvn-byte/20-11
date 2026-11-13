@@ -2484,7 +2484,8 @@ window.CUSTOM_APP_CONFIG = {
                     for (let x = 0; x <= ws; x++) {
                         const u = x / ws, theta = t0 + u * (t1 - t0);
                         verts.push(r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
-                        uvs.push(u, 1 - v);
+                        // Invert longitude so photos read left-to-right on the visible hemisphere.
+                        uvs.push(1 - u, 1 - v);
                     }
                 }
                 for (let y = 0; y < hs; y++) for (let x = 0; x < ws; x++) {
