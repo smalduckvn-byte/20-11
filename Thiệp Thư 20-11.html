@@ -191,10 +191,12 @@ window.assetURL = function(path){return window.__ASSET_DATA__[path] || path};
         #sound-start-caption {
             position: fixed;
             top: 18px;
-            right: 18px;
+            left: 18px;
+            right: auto;
+            bottom: auto;
             z-index: 450;
-            width: min(420px, calc(100vw - 36px));
-            max-height: 72vh;
+            width: min(300px, calc(100vw - 36px));
+            max-height: min(32vh, 220px);
             box-sizing: border-box;
             overflow-y: auto;
             padding: 11px 13px;
@@ -209,6 +211,82 @@ window.assetURL = function(path){return window.__ASSET_DATA__[path] || path};
             opacity: 0;
             visibility: hidden;
             pointer-events: auto;
+        }
+
+        #sound-start-caption[data-position="1"] {
+            top: 18px; left: auto; right: 18px; bottom: auto;
+        }
+
+        #sound-start-caption[data-position="2"] {
+            top: 28vh; left: auto; right: 18px; bottom: auto;
+        }
+
+        #sound-start-caption[data-position="3"] {
+            top: auto; left: auto; right: 18px; bottom: 28vh;
+        }
+
+        #sound-start-caption[data-position="4"] {
+            top: auto; left: auto; right: 18px; bottom: 18px;
+        }
+
+        #sound-start-caption[data-position="5"] {
+            top: auto; left: 18px; right: auto; bottom: 18px;
+        }
+
+        #sound-start-caption[data-position="6"] {
+            top: auto; left: 18px; right: auto; bottom: 28vh;
+        }
+
+        #sound-start-caption[data-position="7"] {
+            top: 28vh; left: 18px; right: auto; bottom: auto;
+        }
+
+        @media (max-width: 600px) {
+            #sound-start-caption {
+                width: min(250px, calc(100vw - 24px));
+                max-height: 22vh;
+                padding: 9px 11px;
+            }
+
+            #sound-start-caption[data-position="0"],
+            #sound-start-caption[data-position="5"],
+            #sound-start-caption[data-position="6"],
+            #sound-start-caption[data-position="7"] {
+                left: 12px;
+                right: auto;
+            }
+
+            #sound-start-caption[data-position="1"],
+            #sound-start-caption[data-position="2"],
+            #sound-start-caption[data-position="3"],
+            #sound-start-caption[data-position="4"] {
+                left: auto;
+                right: 12px;
+            }
+
+            #sound-start-caption[data-position="0"],
+            #sound-start-caption[data-position="1"] {
+                top: 12px;
+                bottom: auto;
+            }
+
+            #sound-start-caption[data-position="2"],
+            #sound-start-caption[data-position="7"] {
+                top: 25vh;
+                bottom: auto;
+            }
+
+            #sound-start-caption[data-position="3"],
+            #sound-start-caption[data-position="6"] {
+                top: auto;
+                bottom: 25vh;
+            }
+
+            #sound-start-caption[data-position="4"],
+            #sound-start-caption[data-position="5"] {
+                top: auto;
+                bottom: 12px;
+            }
         }
 
         #sound-start-caption.visible {
@@ -1446,6 +1524,7 @@ for (let i = 1; i <= 32; i++) {
         transitionTimer = null;
         if (audio.paused || audio.ended) return;
         caption.classList.remove('visible', 'is-leaving');
+        caption.dataset.position = String(segmentIndex % 8);
         caption.textContent = segments[segmentIndex];
         caption.classList.toggle('is-title', segmentIndex === 0);
         caption.classList.add('visible');
