@@ -1412,48 +1412,43 @@ for (let i = 1; i <= 32; i++) {
       bottom: Math.max(...rects.map((rect) => rect.bottom))
     };
   };
-  const paragraphs = [
-    'Tháng 11 lại về, mang theo cái se lạnh của những ngày cuối năm, tháng 11 cũng là dịp để chúng em bày tỏ lòng biết ơn sâu sắc đến thầy cô – những người lái đò thầm lặng đã và đang dìu dắt bao thế hệ học trò qua những dòng sông tri thức.',
-    'Có lẽ, mỗi người trong chúng em đều có những kỷ niệm riêng về thầy cô. Đó có thể là những lần thầy cô tận tình chỉ bảo, ánh mắt ấm áp khi chúng em đạt thành tích tốt, hoặc những lời động viên khi chúng em vấp ngã. Thầy cô không chỉ truyền đạt kiến thức mà còn rèn luyện cho chúng em lòng dũng cảm, sự kiên trì và tinh thần trách nhiệm. Những bài giảng không chỉ là kiến thức sách vở mà còn là những bài học về cuộc sống, về cách làm người. Thầy cô đã dành trọn tâm huyết và cả thanh xuân để xây dựng nền tảng cho chúng em. Bao năm qua, thầy cô âm thầm cống hiến, hy sinh để mang đến những điều tốt đẹp nhất. Có những lúc chúng em chưa thật sự hiểu hết lời thầy cô nhắn nhủ, nhưng hôm nay nhìn lại, chúng em mới thấy những bài học ấy quý giá biết bao.',
-    'Những ngày đầu tiên, khi bước chân vào trường THPT Châu Văn An, chúng em còn bỡ ngỡ với cách học và chưa thuộc tên thầy cô. Chính các thầy cô đã nhẹ nhàng chỉ bảo, động viên chúng em từng chút một. Thầy cô là những người lái đò thầm lặng; mỗi bài giảng, mỗi nụ cười, mỗi lời nhắc nhở đều là những ngọn đèn soi sáng con đường tri thức. Công lao ấy, chúng em luôn khắc cốt ghi tâm. Thầy cô không chỉ truyền đạt kiến thức mà còn là những người cha, người mẹ thứ hai dạy chúng em biết cách làm người, biết yêu thương, sẻ chia và ước mơ. Mỗi khi chúng em vấp ngã, thầy cô nâng đỡ; mỗi khi chúng em lạc lối, thầy cô là ngọn hải đăng soi đường. Những lời dạy của thầy cô sẽ mãi là hành trang quý giá giúp chúng em tự tin bước vào đời.',
-    'Có một nghề bụi phấn bám đầy tay, người ta bảo đó là nghề cao quý nhất. Có một nghề không trồng cây vào đất mà mang lại cho đời những trái ngọt, hoa thơm.',
-    'Nhân ngày Nhà giáo Việt Nam 20/11, chúng em xin được gửi lời tri ân sâu sắc nhất đến thầy cô. Xin cảm ơn thầy cô vì đã dành trọn yêu thương và tâm huyết cho chúng em. Nhờ có thầy cô mà chúng em vững bước hơn trên con đường tương lai, biết tự tin vào chính mình và biết sống với ước mơ, hoài bão.',
-    'Kính chúc thầy cô luôn mạnh khỏe, bình an và mãi giữ được ngọn lửa nhiệt huyết trong sự nghiệp trồng người cao cả. Chúng em sẽ luôn trân trọng và mang theo những bài học của thầy cô như một hành trang quý báu trên con đường đời. Thầy cô là ngọn đèn soi sáng, là ngọn lửa sưởi ấm trong cuộc đời mỗi chúng em.',
-    'Một lần nữa, xin gửi tới thầy cô lòng biết ơn chân thành và lời chúc tốt đẹp nhất. Chúng em sẽ cố gắng học tập, rèn luyện để xứng đáng với những gì thầy cô trao gửi. Chúng em xin cảm ơn thầy cô vì tất cả!'
-  ];
-  const segments = paragraphs.flatMap((paragraph) => {
-    const words = paragraph.trim().split(/\s+/);
-    const chunks = [];
-    let start = 0;
-    while (start < words.length) {
-      const remainingWords = words.length - start;
-      let end = words.length;
-      if (remainingWords > 20) {
-        const maxEnd = Math.min(start + 20, words.length - 5);
-        const targetEnd = Math.min(start + 13, maxEnd);
-        end = targetEnd;
-        let bestDistance = Infinity;
-        for (let boundary = start + 5; boundary <= maxEnd; boundary += 1) {
-          if (!/[,.!?;:]$/.test(words[boundary - 1])) continue;
-          const distance = Math.abs(boundary - targetEnd);
-          if (distance < bestDistance) {
-            end = boundary;
-            bestDistance = distance;
+  window.attachNarrationCaptions = function (audio) {
+    const narrationText = window.CUSTOM_APP_CONFIG?.narrationText;
+    if (typeof narrationText !== 'string' || !narrationText.trim()) {
+      throw new Error('Thiếu nội dung lời dẫn trong cấu hình lá thư.');
+    }
+    const paragraphs = narrationText.split(/\n\s*\n/).map((text) => text.trim()).filter(Boolean);
+    const segments = paragraphs.flatMap((paragraph) => {
+      const words = paragraph.split(/\s+/);
+      const chunks = [];
+      let start = 0;
+      while (start < words.length) {
+        const remainingWords = words.length - start;
+        let end = words.length;
+        if (remainingWords > 20) {
+          const maxEnd = Math.min(start + 20, words.length - 5);
+          const targetEnd = Math.min(start + 13, maxEnd);
+          end = targetEnd;
+          let bestDistance = Infinity;
+          for (let boundary = start + 5; boundary <= maxEnd; boundary += 1) {
+            if (!/[,.!?;:]$/.test(words[boundary - 1])) continue;
+            const distance = Math.abs(boundary - targetEnd);
+            if (distance < bestDistance) {
+              end = boundary;
+              bestDistance = distance;
+            }
           }
         }
+        chunks.push(words.slice(start, end).join(' '));
+        start = end;
       }
-      chunks.push(words.slice(start, end).join(' '));
-      start = end;
-    }
-    return chunks;
-  });
-  const weights = segments.map((text, index) => {
-    const punctuationWeight = /[.!?]$/.test(text) ? 5 : 0;
-    return Math.max(index === 0 ? 45 : 0, Array.from(text).length + punctuationWeight);
-  });
-  const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
-
-  window.attachNarrationCaptions = function (audio) {
+      return chunks;
+    });
+    const weights = segments.map((text, index) => {
+      const punctuationWeight = /[.!?]$/.test(text) ? 5 : 0;
+      return Math.max(index === 0 ? 45 : 0, Array.from(text).length + punctuationWeight);
+    });
+    const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
     let activeSegment = -1;
     let activeCaptionLine = -1;
 
@@ -1649,8 +1644,9 @@ window.CUSTOM_APP_CONFIG = {
     "Chúc Thầy Cô luôn vui với hành trình gieo chữ",
     "Tri ân những bài học và yêu thương Thầy Cô trao"
   ],
+  narrationText: "Tháng 11 lại về, mang theo cái se lạnh của những ngày cuối năm, và cũng là dịp để chúng em bày tỏ lòng biết ơn sâu sắc đến thầy cô – những người lái đò thầm lặng, đã và đang dìu dắt bao thế hệ học trò qua những dòng sông tri thức.\n\nCó lẽ, mỗi người trong chúng em đều có những kỷ niệm riêng về thầy cô. Đó có thể là những lần được thầy cô tận tình chỉ bảo, ánh mắt ấm áp của thầy cô khi chúng em đạt thành tích tốt, hay những lời động viên khi chúng em vấp ngã. Thầy cô đã không chỉ dạy dỗ chúng em những kiến thức, mà còn rèn luyện cho chúng em lòng dũng cảm, sự kiên trì và tinh thần trách nhiệm. Những bài giảng của thầy cô không chỉ là kiến thức sách vở, mà còn là những bài học về cuộc sống, về cách làm người. Thầy cô đã dành trọn tâm huyết và cả thanh xuân của mình để xây dựng nền tảng cho chúng em. Bao năm qua, thầy cô đã âm thầm cống hiến, hy sinh để mang đến cho chúng em những điều tốt đẹp nhất. Có những lúc, chúng em chưa thật sự hiểu hết những gì thầy cô nhắn nhủ, nhưng đến hôm nay khi nhìn lại, chúng em mới thấy những bài học ấy thật quý giá biết bao.\n\nNhững ngày đầu tiên khi bước chân vào ngôi trường Trung học Phổ thông An Nhơn 1, chúng em chưa quen với cách học, chưa thuộc tên thầy cô. Chính các thầy cô đã nhẹ nhàng chỉ bảo, động viên chúng em từng chút một. Thầy cô là những người lái đò thầm lặng; mỗi bài giảng, mỗi nụ cười, mỗi lời nhắc nhở đều là những ngọn đèn soi sáng con đường tri thức của chúng em. Công lao ấy, chúng em luôn khắc cốt ghi tâm. Thầy cô không chỉ là người truyền đạt kiến thức, mà còn là những người cha, người mẹ thứ hai, dạy cho chúng em biết cách làm người, biết yêu thương, biết sẻ chia và biết ước mơ. Mỗi khi chúng em vấp ngã, thầy cô là người nâng đỡ; mỗi khi chúng em lạc lối, thầy cô là ngọn hải đăng soi đường. Những lời dạy của thầy cô sẽ mãi là hành trang quý giá để chúng em tự tin bước vào đời.\n\nCó một nghề bụi phấn bám đầy tay, người ta bảo đó là nghề cao quý nhất. Có một nghề không trồng cây vào đất, mà mang lại cho đời những trái ngọt, hoa thơm. Nhân ngày Nhà giáo Việt Nam 20 tháng 11, chúng em xin được gửi lời tri ân sâu sắc nhất đến thầy cô. Xin cảm ơn thầy cô vì đã dành trọn yêu thương và tâm huyết cho chúng em. Nhờ có thầy cô mà chúng em vững bước hơn trên con đường tương lai, biết tự tin vào chính mình và biết sống với ước mơ, hoài bão.\n\nKính chúc thầy cô luôn mạnh khỏe, bình an và mãi giữ được ngọn lửa nhiệt huyết trong sự nghiệp trồng người cao cả. Chúng em sẽ luôn trân trọng và mang theo những bài học của thầy cô như một hành trang quý báu trên con đường đời. Thầy cô là ngọn đèn soi sáng, là ngọn lửa sưởi ấm trong cuộc đời mỗi chúng em.\n\nMột lần nữa, xin gửi tới thầy cô lòng biết ơn chân thành và lời chúc tốt đẹp nhất. Chúng em sẽ cố gắng học tập, rèn luyện để xứng đáng với những gì thầy cô trao gửi. Chúng em xin cảm ơn thầy cô vì tất cả!",
   letter: {
-    text: "Tháng 11 lại về, mang theo cái se lạnh của những ngày cuối năm, và cũng là dịp để chúng em bày tỏ lòng biết ơn sâu sắc đến thầy cô – những người lái đò thầm lặng, đã và đang dìu dắt bao thế hệ học trò qua những dòng sông tri thức.\n\nCó lẽ, mỗi người trong chúng em đều có những kỷ niệm riêng về thầy cô. Đó có thể là những lần được thầy cô tận tình chỉ bảo, ánh mắt ấm áp của thầy cô khi chúng em đạt thành tích tốt, hay những lời động viên khi chúng em vấp ngã. Thầy cô đã không chỉ dạy dỗ chúng em những kiến thức, mà còn rèn luyện cho chúng em lòng dũng cảm, sự kiên trì và tinh thần trách nhiệm. Những bài giảng của thầy cô không chỉ là kiến thức sách vở, mà còn là những bài học về cuộc sống, về cách làm người. Thầy cô đã dành trọn tâm huyết và cả thanh xuân của mình để xây dựng nền tảng cho chúng em. Bao năm qua, thầy cô đã âm thầm cống hiến, hy sinh để mang đến cho chúng em những điều tốt đẹp nhất. Có những lúc, chúng em chưa thật sự hiểu hết những gì thầy cô nhắn nhủ, nhưng đến hôm nay khi nhìn lại, chúng em mới thấy những bài học ấy thật quý giá biết bao.\n\nNhững ngày đầu tiên khi bước chân vào ngôi trường Trung học Phổ thông An Nhơn 1, chúng em chưa quen với cách học, chưa thuộc tên thầy cô. Chính các thầy cô đã nhẹ nhàng chỉ bảo, động viên chúng em từng chút một. Thầy cô là những người lái đò thầm lặng; mỗi bài giảng, mỗi nụ cười, mỗi lời nhắc nhở đều là những ngọn đèn soi sáng con đường tri thức của chúng em. Công lao ấy, chúng em luôn khắc cốt ghi tâm. Thầy cô không chỉ là người truyền đạt kiến thức, mà còn là những người cha, người mẹ thứ hai, dạy cho chúng em biết cách làm người, biết yêu thương, biết sẻ chia và biết ước mơ. Mỗi khi chúng em vấp ngã, thầy cô là người nâng đỡ; mỗi khi chúng em lạc lối, thầy cô là ngọn hải đăng soi đường. Những lời dạy của thầy cô sẽ mãi là hành trang quý giá để chúng em tự tin bước vào đời.\n\nCó một nghề bụi phấn bám đầy tay, người ta bảo đó là nghề cao quý nhất. Có một nghề không trồng cây vào đất, mà mang lại cho đời những trái ngọt, hoa thơm. Nhân ngày Nhà giáo Việt Nam 20 tháng 11, chúng em xin được gửi lời tri ân sâu sắc nhất đến thầy cô. Xin cảm ơn thầy cô vì đã dành trọn yêu thương và tâm huyết cho chúng em. Nhờ có thầy cô mà chúng em vững bước hơn trên con đường tương lai, biết tự tin vào chính mình và biết sống với ước mơ, hoài bão.\n\nKính chúc thầy cô luôn mạnh khỏe, bình an và mãi giữ được ngọn lửa nhiệt huyết trong sự nghiệp trồng người cao cả. Chúng em sẽ luôn trân trọng và mang theo những bài học của thầy cô như một hành trang quý báu trên con đường đời. Thầy cô là ngọn đèn soi sáng, là ngọn lửa sưởi ấm trong cuộc đời mỗi chúng em.\n\nMột lần nữa, xin gửi tới thầy cô lòng biết ơn chân thành và lời chúc tốt đẹp nhất. Chúng em sẽ cố gắng học tập, rèn luyện để xứng đáng với những gì thầy cô trao gửi. Chúng em xin cảm ơn thầy cô vì tất cả!",
+    text: "Nhân ngày 20/11, chúng em xin cảm ơn Thầy Cô vì những bài học, sự tận tâm và yêu thương đã dành cho chúng em.\n\nKính chúc Thầy Cô luôn mạnh khỏe, bình an và hạnh phúc. Chúng em luôn biết ơn Thầy Cô.",
     image: "image/letter-emblem.png",
     caption: "Tri ân Thầy Cô nhân ngày Nhà giáo Việt Nam 20/11"
   },
@@ -2576,7 +2572,7 @@ window.CUSTOM_APP_CONFIG = {
             let cupidLetterState = 'hidden';
             let cupidFlyStartTime = 0;
             const CUPID_FLY_DURATION_MS = 2000;
-            const CUPID_LETTER_TEXT = cfg.letter && cfg.letter.text ? cfg.letter.text : 'Tháng 11 lại về, mang theo cái se lạnh của những ngày cuối năm, và cũng là dịp để chúng em bày tỏ lòng biết ơn sâu sắc đến thầy cô – những người lái đò thầm lặng, đã và đang dìu dắt bao thế hệ học trò qua những dòng sông tri thức.\n\nCó lẽ, mỗi người trong chúng em đều có những kỷ niệm riêng về thầy cô. Đó có thể là những lần được thầy cô tận tình chỉ bảo, ánh mắt ấm áp của thầy cô khi chúng em đạt thành tích tốt, hay những lời động viên khi chúng em vấp ngã. Thầy cô đã không chỉ dạy dỗ chúng em những kiến thức, mà còn rèn luyện cho chúng em lòng dũng cảm, sự kiên trì và tinh thần trách nhiệm. Những bài giảng của thầy cô không chỉ là kiến thức sách vở, mà còn là những bài học về cuộc sống, về cách làm người. Thầy cô đã dành trọn tâm huyết và cả thanh xuân của mình để xây dựng nền tảng cho chúng em. Bao năm qua, thầy cô đã âm thầm cống hiến, hy sinh để mang đến cho chúng em những điều tốt đẹp nhất. Có những lúc, chúng em chưa thật sự hiểu hết những gì thầy cô nhắn nhủ, nhưng đến hôm nay khi nhìn lại, chúng em mới thấy những bài học ấy thật quý giá biết bao.\n\nNhững ngày đầu tiên khi bước chân vào ngôi trường Trung học Phổ thông An Nhơn 1, chúng em chưa quen với cách học, chưa thuộc tên thầy cô. Chính các thầy cô đã nhẹ nhàng chỉ bảo, động viên chúng em từng chút một. Thầy cô là những người lái đò thầm lặng; mỗi bài giảng, mỗi nụ cười, mỗi lời nhắc nhở đều là những ngọn đèn soi sáng con đường tri thức của chúng em. Công lao ấy, chúng em luôn khắc cốt ghi tâm. Thầy cô không chỉ là người truyền đạt kiến thức, mà còn là những người cha, người mẹ thứ hai, dạy cho chúng em biết cách làm người, biết yêu thương, biết sẻ chia và biết ước mơ. Mỗi khi chúng em vấp ngã, thầy cô là người nâng đỡ; mỗi khi chúng em lạc lối, thầy cô là ngọn hải đăng soi đường. Những lời dạy của thầy cô sẽ mãi là hành trang quý giá để chúng em tự tin bước vào đời.\n\nCó một nghề bụi phấn bám đầy tay, người ta bảo đó là nghề cao quý nhất. Có một nghề không trồng cây vào đất, mà mang lại cho đời những trái ngọt, hoa thơm. Nhân ngày Nhà giáo Việt Nam 20 tháng 11, chúng em xin được gửi lời tri ân sâu sắc nhất đến thầy cô. Xin cảm ơn thầy cô vì đã dành trọn yêu thương và tâm huyết cho chúng em. Nhờ có thầy cô mà chúng em vững bước hơn trên con đường tương lai, biết tự tin vào chính mình và biết sống với ước mơ, hoài bão.\n\nKính chúc thầy cô luôn mạnh khỏe, bình an và mãi giữ được ngọn lửa nhiệt huyết trong sự nghiệp trồng người cao cả. Chúng em sẽ luôn trân trọng và mang theo những bài học của thầy cô như một hành trang quý báu trên con đường đời. Thầy cô là ngọn đèn soi sáng, là ngọn lửa sưởi ấm trong cuộc đời mỗi chúng em.\n\nMột lần nữa, xin gửi tới thầy cô lòng biết ơn chân thành và lời chúc tốt đẹp nhất. Chúng em sẽ cố gắng học tập, rèn luyện để xứng đáng với những gì thầy cô trao gửi. Chúng em xin cảm ơn thầy cô vì tất cả!';
+            const CUPID_LETTER_TEXT = cfg.letter && cfg.letter.text ? cfg.letter.text : "Nhân ngày 20/11, chúng em xin cảm ơn Thầy Cô vì những bài học, sự tận tâm và yêu thương đã dành cho chúng em.\n\nKính chúc Thầy Cô luôn mạnh khỏe, bình an và hạnh phúc. Chúng em luôn biết ơn Thầy Cô.";
             function spRandOnSphere(r) {
                 const t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
                 return new THREE.Vector3(r * Math.sin(p) * Math.cos(t), r * Math.cos(p), r * Math.sin(p) * Math.sin(t));
@@ -3301,13 +3297,6 @@ window.CUSTOM_APP_CONFIG = {
             }
             function startLetterTypingEffect(letterContent, cursor) {
                 const text = CUPID_LETTER_TEXT;
-                const audio = window.narrationAudio;
-                if (audio && typeof window.__narrationSync === 'function') {
-                    letterContent.innerHTML = '';
-                    if (cursor) cursor.remove();
-                    window.__narrationSync(letterContent, audio);
-                    return;
-                }
                 const TYPING_SPEED_MS = 23;
                 const NEWLINE_DELAY_MS = 250;
                 let currentIndex = 0;
@@ -4211,8 +4200,6 @@ window.setTimeout(function(){
 #cupid-letter-frame .letter-content{background:none!important}
 #cupid-letter-frame .letter-content .lp{background:repeating-linear-gradient(transparent 0 calc(1.6em - 1px),rgba(201,122,147,.17) calc(1.6em - 1px) 1.6em);margin:0 0 .75em!important}
 #cupid-letter-frame .letter-content .lp:last-of-type{margin-bottom:0!important}
-#cupid-letter-frame .letter-content .narration-sentence{transition:color .25s ease,background-color .25s ease}
-#cupid-letter-frame .letter-content .narration-sentence.is-current{color:#754453;background-color:rgba(244,215,221,.7);border-radius:.18em;box-decoration-break:clone;-webkit-box-decoration-break:clone}
 #cupid-letter-frame.narration-cue-mode .letter-content{visibility:hidden}
 #cupid-letter-frame .narration-cue-zone{position:absolute;z-index:12;left:8%;right:8%;top:38%;bottom:18%;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .85s ease,visibility .85s;font-family:"Be Vietnam Pro",sans-serif}
 #cupid-letter-frame.narration-cue-mode .narration-cue-zone{opacity:1;visibility:visible}
@@ -4264,12 +4251,13 @@ window.setTimeout(function(){
         const narrationAudio = new Audio(window.assetURL("audio/12A12-tri-an-thay-co-20-11.mp3"));
         narrationAudio.preload = "auto";
         window.narrationAudio = narrationAudio;
-        window.attachNarrationCaptions(narrationAudio);
 
-        const narrationText = window.CUSTOM_APP_CONFIG?.letter?.text || "";
-        let syncedLetter = null;
+        const narrationText = window.CUSTOM_APP_CONFIG?.narrationText || "";
+        if (!narrationText.trim()) {
+            throw new Error("Thiếu bản lời đọc MP3 trong cấu hình.");
+        }
+        window.attachNarrationCaptions(narrationAudio);
         let syncedAudio = null;
-        let narrationSentences = [];
         let narrationCues = [];
         let cueActiveIndex = -1;
         let cueSlotIndex = -1;
@@ -4300,11 +4288,9 @@ window.setTimeout(function(){
             });
         };
 
-        const prepareNarrationText = (letterContent, audio) => {
-            if (!letterContent || !audio) return;
-            if (syncedLetter === letterContent && syncedAudio === audio) return;
-
-            syncedLetter = letterContent;
+        const prepareNarrationCues = (audio) => {
+            if (!audio) return;
+            if (syncedAudio === audio) return;
             syncedAudio = audio;
             cueActiveIndex = -1;
             cueSlotIndex = -1;
@@ -4312,37 +4298,12 @@ window.setTimeout(function(){
                 slot.classList.remove("show", "compact");
                 slot.textContent = "";
             });
-            letterContent.replaceChildren();
-            letterContent.classList.remove("typing-complete");
-            narrationSentences = [];
 
             const paragraphs = narrationText.split(/\n\s*\n/).map((text) => text.trim()).filter(Boolean);
-            paragraphs.forEach((paragraph, paragraphIndex) => {
-                const p = document.createElement("p");
-                p.className = "lp" + (paragraphIndex === 0 ? " lead" : "");
-                letterContent.appendChild(p);
-
-                const sentences = paragraph.match(/[^.!?]+(?:[.!?]+|$)/g) || [paragraph];
-                sentences.forEach((sentence) => {
-                    const text = sentence.trim();
-                    if (!text) return;
-
-                    const span = document.createElement("span");
-                    span.className = "narration-sentence";
-                    p.appendChild(span);
-                    const separator = document.createTextNode("");
-                    narrationSentences.push({
-                        text,
-                        characters: Array.from(text),
-                        element: span,
-                        separator,
-                        weight: Array.from(text).length + (/[.!?]$/.test(text) ? 8 : 0)
-                    });
-                    p.appendChild(separator);
-                });
-            });
-
-            narrationCues = narrationSentences.flatMap(({ text }) => {
+            const sentences = paragraphs.flatMap((paragraph) =>
+                paragraph.match(/[^.!?]+(?:[.!?]+|$)/g) || [paragraph]
+            ).map((sentence) => sentence.trim()).filter(Boolean);
+            narrationCues = sentences.flatMap((text) => {
                 const words = text.match(/\S+/g) || [];
                 const phrases = [];
                 let phrase = "";
@@ -4360,53 +4321,32 @@ window.setTimeout(function(){
                 }));
             });
 
-            const totalWeight = narrationSentences.reduce((sum, sentence) => sum + sentence.weight, 0);
             const totalCueWeight = narrationCues.reduce((sum, cue) => sum + cue.weight, 0);
-            const updateText = () => {
-                if (!Number.isFinite(audio.duration) || audio.duration <= 0 || !totalWeight || !totalCueWeight) return;
+            const updateCues = () => {
+                if (audio.paused || audio.ended || !Number.isFinite(audio.duration) || audio.duration <= 0 || !totalCueWeight) {
+                    showCue(-1);
+                    return;
+                }
                 const audioProgress = Math.max(0, Math.min(audio.currentTime / audio.duration, 1));
-                let elapsedWeight = audioProgress * totalWeight;
                 let elapsedCueWeight = audioProgress * totalCueWeight;
                 let activeCueIndex = -1;
 
-                narrationSentences.forEach((sentence) => {
-                    const progress = Math.max(0, Math.min(elapsedWeight / sentence.weight, 1));
-                    const visibleCharacters = Math.floor(progress * sentence.characters.length);
-                    sentence.element.textContent = sentence.characters.slice(0, visibleCharacters).join("");
-                    sentence.element.classList.toggle("is-current", elapsedWeight >= 0 && elapsedWeight < sentence.weight);
-                    sentence.separator.textContent = progress === 1 ? " " : "";
-                    elapsedWeight -= sentence.weight;
-                });
                 narrationCues.forEach((cue, index) => {
                     if (elapsedCueWeight >= 0 && elapsedCueWeight < cue.weight) activeCueIndex = index;
                     elapsedCueWeight -= cue.weight;
                 });
                 showCue(activeCueIndex);
-
-                if (audio.ended) letterContent.classList.add("typing-complete");
-                else letterContent.classList.remove("typing-complete");
             };
 
-            audio.addEventListener("timeupdate", updateText);
-            audio.addEventListener("durationchange", updateText);
-            audio.addEventListener("loadedmetadata", updateText);
-            audio.addEventListener("seeked", updateText);
-            audio.addEventListener("ended", updateText);
-            letterContent.__updateNarrationText = updateText;
-            letterContent.__showFullTranscript = () => {
-                narrationSentences.forEach((sentence) => {
-                    sentence.element.textContent = sentence.text;
-                    sentence.element.classList.remove("is-current");
-                    sentence.separator.textContent = " ";
-                });
-                showCue(-1);
-                letterContent.classList.add("typing-complete");
-            };
-            if (audio.error) letterContent.__showFullTranscript();
-            else updateText();
+            audio.addEventListener("play", updateCues);
+            audio.addEventListener("playing", updateCues);
+            audio.addEventListener("timeupdate", updateCues);
+            audio.addEventListener("durationchange", updateCues);
+            audio.addEventListener("loadedmetadata", updateCues);
+            audio.addEventListener("seeked", updateCues);
+            audio.addEventListener("ended", updateCues);
+            updateCues();
         };
-
-        window.__narrationSync = prepareNarrationText;
 
         if (!button || !status) return;
 
@@ -4418,17 +4358,15 @@ window.setTimeout(function(){
         };
 
         const startNarration = () => {
-            const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
-            if (letterContent) prepareNarrationText(letterContent, narrationAudio);
+            prepareNarrationCues(narrationAudio);
             narrationAudio.currentTime = 0;
             const playback = narrationAudio.play();
             if (playback && typeof playback.catch === "function") {
                 playback.catch((error) => {
                     setPlaying(false);
                     letterFrame?.classList.remove("narration-cue-mode");
+                    showCue(-1);
                     status.textContent = "Không thể tự phát lời dẫn. Hãy nhấn “Nghe lời dẫn” để thử lại.";
-                    const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
-                    if (letterContent?.__showFullTranscript) letterContent.__showFullTranscript();
                     console.warn("Không thể phát lời dẫn:", error);
                 });
             }
@@ -4441,29 +4379,28 @@ window.setTimeout(function(){
         window.stopNarration = stopNarration;
 
         narrationAudio.addEventListener("play", () => {
-            const letterContent = document.querySelector('#cupid-letter-frame .letter-content');
-            if (letterContent) prepareNarrationText(letterContent, narrationAudio);
+            prepareNarrationCues(narrationAudio);
             letterFrame?.classList.add("narration-cue-mode");
             setPlaying(true);
             status.textContent = "Đang phát lời dẫn…";
         });
         narrationAudio.addEventListener("pause", () => {
             setPlaying(false);
+            letterFrame?.classList.remove("narration-cue-mode");
+            showCue(-1);
             status.textContent = "";
         });
         narrationAudio.addEventListener("ended", () => {
             setPlaying(false);
             letterFrame?.classList.remove("narration-cue-mode");
-            const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
-            if (letterContent?.__showFullTranscript) letterContent.__showFullTranscript();
+            showCue(-1);
             status.textContent = "";
         });
         narrationAudio.addEventListener("error", () => {
             setPlaying(false);
             letterFrame?.classList.remove("narration-cue-mode");
             status.textContent = "Không tải được tệp lời dẫn.";
-            const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
-            if (letterContent?.__showFullTranscript) letterContent.__showFullTranscript();
+            showCue(-1);
             console.error("Không tải được tệp lời dẫn:", narrationAudio.error);
         });
 
@@ -4471,8 +4408,6 @@ window.setTimeout(function(){
             if (!narrationAudio.paused) {
                 narrationAudio.pause();
                 narrationAudio.currentTime = 0;
-                const letterContent = document.querySelector("#cupid-letter-frame .letter-content");
-                if (letterContent?.__updateNarrationText) letterContent.__updateNarrationText();
                 return;
             }
             startNarration();
