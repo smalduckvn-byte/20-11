@@ -52,6 +52,24 @@ window.assetURL = function(path){return window.__ASSET_DATA__[path] || path};
             z-index: 3;
         }
 
+        #webglCanvas.caption-clear-zone,
+        #sphere-particles-bg.caption-clear-zone {
+            -webkit-mask-image: radial-gradient(
+                ellipse var(--caption-hole-rx, 360px) var(--caption-hole-ry, 100px)
+                    at var(--caption-hole-x, 50%) var(--caption-hole-y, 50%),
+                transparent 0 82%,
+                rgba(0, 0, 0, 0.35) 96%,
+                #000 100%
+            );
+            mask-image: radial-gradient(
+                ellipse var(--caption-hole-rx, 360px) var(--caption-hole-ry, 100px)
+                    at var(--caption-hole-x, 50%) var(--caption-hole-y, 50%),
+                transparent 0 82%,
+                rgba(0, 0, 0, 0.35) 96%,
+                #000 100%
+            );
+        }
+
         body::before {
             content: "";
             position: fixed;
@@ -196,13 +214,13 @@ window.assetURL = function(path){return window.__ASSET_DATA__[path] || path};
 
         #sound-start-caption {
             position: fixed;
-            top: 50%;
-            left: 50%;
+            top: calc(50% + var(--caption-offset-y, 0px));
+            left: calc(50% + var(--caption-offset-x, 0px));
             right: auto;
             bottom: auto;
             transform: translate(-50%, -50%);
             z-index: 4;
-            width: min(680px, calc(100vw - 40px));
+            width: min(520px, calc(100vw - 40px));
             max-height: min(30vh, 220px);
             box-sizing: border-box;
             overflow-y: auto;
@@ -221,7 +239,7 @@ window.assetURL = function(path){return window.__ASSET_DATA__[path] || path};
 
         @media (max-width: 600px) {
             #sound-start-caption {
-                width: min(680px, calc(100vw - 28px));
+                width: min(520px, calc(100vw - 28px));
                 max-height: 32vh;
                 font-size: clamp(15px, 4vw, 19px);
             }
@@ -1390,6 +1408,20 @@ for (let i = 1; i <= 32; i++) {
 <script>
 (function () {
   const caption = document.getElementById('sound-start-caption');
+  const captionOffsets = [
+    { x: 0, y: 0 },
+    { x: -22, y: -12 },
+    { x: 22, y: -12 },
+    { x: 22, y: 12 },
+    { x: -22, y: 12 },
+    { x: 0, y: -20 },
+    { x: 0, y: 20 }
+  ];
+  const getCaptionTextRect = () => {
+  const range = document.createRange();
+  range.selectNodeContents(caption);
+  return range.getBoundingClientRect();
+  };
   const paragraphs = [
     'Tháng 11 lại về',
     'Mang theo cái se lạnh của những ngày cuối năm, tháng 11 cũng là dịp để chúng em bày tỏ lòng biết ơn sâu sắc đến thầy cô – những người lái đò thầm lặng đã và đang dìu dắt bao thế hệ học trò qua những dòng sông tri thức.',
@@ -1426,14 +1458,67 @@ for (let i = 1; i <= 32; i++) {
   const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
 
   window.attachNarrationCaptions = function (audio) {
+    const captionCanvas = document.getElementById('webglCanvas');
+    const captionBackground = document.getElementById('sphere-particles-bg');
     let activeSegment = -1;
     let transitionTimer = null;
+
+    const findCaptionPosition = (segmentIndex) => {
+      const startIndex = ((segmentIndex % captionOffsets.length) + captionOffsets.length) % captionOffsets.length;
+      const foreground = Array.from(document.body.querySelectorAll('*')).filter((element) => {
+        if (element === caption || element === captionCanvas) return false;
+        const style = window.getComputedStyle(element);
+        const zIndex = Number.parseInt(style.zIndex, 10);
+        if (!Number.isFinite(zIndex) || zIndex < 4 || style.display === 'none' || style.visibility === 'hidden') return false;
+        let ancestor = element;
+        while (ancestor && ancestor !== document.body) {
+          if (window.getComputedStyle(ancestor).opacity === '0') return false;
+          ancestor = ancestor.parentElement;
+        }
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      }).map((element) => element.getBoundingClientRect());
+
+      for (let attempt = 0; attempt < captionOffsets.length; attempt += 1) {
+        const offset = captionOffsets[(startIndex + attempt) % captionOffsets.length];
+        caption.style.setProperty('--caption-offset-x', `${offset.x}px`);
+        caption.style.setProperty('--caption-offset-y', `${offset.y}px`);
+        const textRect = getCaptionTextRect();
+        const insideViewport =
+          textRect.left >= 8 &&
+          textRect.top >= 8 &&
+          textRect.right <= window.innerWidth - 8 &&
+          textRect.bottom <= window.innerHeight - 8;
+        const overlapsForeground = foreground.some((rect) =>
+          textRect.left < rect.right &&
+          textRect.right > rect.left &&
+          textRect.top < rect.bottom &&
+          textRect.bottom > rect.top
+        );
+        if (insideViewport && !overlapsForeground) return true;
+      }
+      return false;
+    };
+
+    const updateCaptionClearZone = () => {
+      if (!caption.classList.contains('visible')) return;
+      const rect = getCaptionTextRect();
+      [captionCanvas, captionBackground].forEach((layer) => {
+        layer.style.setProperty('--caption-hole-x', `${((rect.left + rect.width / 2) / window.innerWidth) * 100}%`);
+        layer.style.setProperty('--caption-hole-y', `${((rect.top + rect.height / 2) / window.innerHeight) * 100}%`);
+        layer.style.setProperty('--caption-hole-rx', `${Math.round(rect.width * 0.68 + 18)}px`);
+        layer.style.setProperty('--caption-hole-ry', `${Math.round(rect.height * 0.95 + 14)}px`);
+        layer.classList.add('caption-clear-zone');
+      });
+    };
 
     const hideCaption = () => {
       window.clearTimeout(transitionTimer);
       transitionTimer = null;
       activeSegment = -1;
       caption.classList.remove('visible', 'is-title', 'is-entering', 'is-leaving');
+      captionCanvas.classList.remove('caption-clear-zone');
+      captionBackground.classList.remove('caption-clear-zone');
     };
 
     const updateCaption = () => {
@@ -1466,6 +1551,13 @@ for (let i = 1; i <= 32; i++) {
         caption.classList.toggle('is-title', segmentIndex === 0);
         caption.classList.add('visible');
         void caption.offsetWidth;
+        if (!findCaptionPosition(segmentIndex)) {
+          caption.classList.remove('visible');
+          captionCanvas.classList.remove('caption-clear-zone');
+          captionBackground.classList.remove('caption-clear-zone');
+          return;
+        }
+        updateCaptionClearZone();
         caption.classList.add('is-entering');
       }, shouldFadeOut ? 180 : 0);
     };
@@ -1478,6 +1570,11 @@ for (let i = 1; i <= 32; i++) {
     audio.addEventListener('pause', hideCaption);
     audio.addEventListener('ended', hideCaption);
     audio.addEventListener('error', hideCaption);
+    window.addEventListener('resize', () => {
+      if (!caption.classList.contains('visible') || activeSegment < 0) return;
+      if (findCaptionPosition(activeSegment)) updateCaptionClearZone();
+      else hideCaption();
+    });
   };
 })();
 </script>
