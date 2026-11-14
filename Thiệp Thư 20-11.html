@@ -52,24 +52,6 @@ window.assetURL = function(path){return window.__ASSET_DATA__[path] || path};
             z-index: 3;
         }
 
-        #webglCanvas.caption-clear-zone,
-        #sphere-particles-bg.caption-clear-zone {
-            -webkit-mask-image: radial-gradient(
-                ellipse var(--caption-hole-rx, 360px) var(--caption-hole-ry, 100px)
-                    at var(--caption-hole-x, 50%) var(--caption-hole-y, 50%),
-                transparent 0 82%,
-                rgba(0, 0, 0, 0.35) 96%,
-                #000 100%
-            );
-            mask-image: radial-gradient(
-                ellipse var(--caption-hole-rx, 360px) var(--caption-hole-ry, 100px)
-                    at var(--caption-hole-x, 50%) var(--caption-hole-y, 50%),
-                transparent 0 82%,
-                rgba(0, 0, 0, 0.35) 96%,
-                #000 100%
-            );
-        }
-
         body::before {
             content: "";
             position: fixed;
@@ -214,21 +196,22 @@ window.assetURL = function(path){return window.__ASSET_DATA__[path] || path};
 
         #sound-start-caption {
             position: fixed;
-            top: calc(50% + var(--caption-offset-y, 0px));
+            top: auto;
             left: calc(50% + var(--caption-offset-x, 0px));
             right: auto;
-            bottom: auto;
-            transform: translate(-50%, -50%);
+            bottom: calc(env(safe-area-inset-bottom, 0px) + 12px + var(--caption-offset-y, 0px));
+            transform: translateX(-50%);
             z-index: 4;
             width: min(520px, calc(100vw - 40px));
             max-height: min(30vh, 220px);
             box-sizing: border-box;
             overflow-y: auto;
+            display: grid;
             padding: 8px 12px;
             border: 0;
             background: transparent;
             color: rgba(255, 105, 180, 0.9);
-            font: 400 clamp(16px, 2vw, 22px)/1.5 "Segoe UI", Tahoma, sans-serif;
+            font: 700 clamp(16px, 2vw, 22px)/1.5 "Segoe UI", Tahoma, sans-serif;
             text-align: center;
             text-shadow: 0 0 8px rgba(255, 105, 180, 0.7), 0 2px 14px rgba(0, 0, 0, 0.95);
             box-shadow: none;
@@ -250,27 +233,19 @@ window.assetURL = function(path){return window.__ASSET_DATA__[path] || path};
             opacity: 1;
         }
 
-        #sound-start-caption.is-entering {
-            animation: soundCaptionReveal 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        .sound-caption-line {
+            grid-area: 1 / 1;
+            opacity: 0;
+            transition: opacity 0.28s ease;
         }
 
-        #sound-start-caption.is-leaving {
-            visibility: visible;
-            animation: soundCaptionLeave 0.18s ease both;
+        .sound-caption-line.is-active {
+            opacity: 1;
         }
 
         #sound-start-caption.is-title {
             font-size: clamp(18px, 1.5vw, 21px);
             text-align: center;
-        }
-
-        @keyframes soundCaptionReveal {
-            from { opacity: 0; margin-top: 10px; }
-            to { opacity: 1; margin-top: 0; }
-        }
-
-        @keyframes soundCaptionLeave {
-            to { opacity: 0; margin-top: -5px; }
         }
 
         #btn-flying-corner {
@@ -1357,7 +1332,7 @@ body,#info,#start-label,.passcode-title,.passcode-subtitle,.letter-content,
 
     <div id="transition-overlay"></div>
     <div id="sphere-click-hint" aria-hidden="true">Click vào nhé</div>
-    <div id="sound-start-caption" aria-live="polite">Tháng 11 lại về</div>
+    <div id="sound-start-caption" aria-live="polite"><span class="sound-caption-line" aria-hidden="true"></span><span class="sound-caption-line" aria-hidden="true"></span></div>
     <button type="button" id="btn-flying-corner" aria-label="Ảnh bay lên">
         💌
     </button>
@@ -1408,6 +1383,7 @@ for (let i = 1; i <= 32; i++) {
 <script>
 (function () {
   const caption = document.getElementById('sound-start-caption');
+  const captionLines = Array.from(caption.querySelectorAll('.sound-caption-line'));
   const captionOffsets = [
     { x: 0, y: 0 },
     { x: -22, y: -12 },
@@ -1418,9 +1394,23 @@ for (let i = 1; i <= 32; i++) {
     { x: 0, y: 20 }
   ];
   const getCaptionTextRect = () => {
-  const range = document.createRange();
-  range.selectNodeContents(caption);
-  return range.getBoundingClientRect();
+    const visibleLines = captionLines.filter((line) =>
+      line.classList.contains('is-active') ||
+      line.classList.contains('is-preparing') ||
+      line.classList.contains('is-leaving')
+    );
+    const rects = visibleLines.map((line) => {
+      const range = document.createRange();
+      range.selectNodeContents(line);
+      return range.getBoundingClientRect();
+    }).filter((rect) => rect.width > 0 && rect.height > 0);
+    if (!rects.length) return caption.getBoundingClientRect();
+    return {
+      left: Math.min(...rects.map((rect) => rect.left)),
+      top: Math.min(...rects.map((rect) => rect.top)),
+      right: Math.max(...rects.map((rect) => rect.right)),
+      bottom: Math.max(...rects.map((rect) => rect.bottom))
+    };
   };
   const paragraphs = [
     'Tháng 11 lại về',
@@ -1458,15 +1448,21 @@ for (let i = 1; i <= 32; i++) {
   const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
 
   window.attachNarrationCaptions = function (audio) {
-    const captionCanvas = document.getElementById('webglCanvas');
-    const captionBackground = document.getElementById('sphere-particles-bg');
     let activeSegment = -1;
-    let transitionTimer = null;
+    let activeCaptionLine = -1;
+
+    captionLines.forEach((line) => {
+      line.addEventListener('transitionend', (event) => {
+        if (event.propertyName === 'opacity' && !line.classList.contains('is-active')) {
+          line.classList.remove('is-leaving', 'is-preparing');
+        }
+      });
+    });
 
     const findCaptionPosition = (segmentIndex) => {
       const startIndex = ((segmentIndex % captionOffsets.length) + captionOffsets.length) % captionOffsets.length;
       const foreground = Array.from(document.body.querySelectorAll('*')).filter((element) => {
-        if (element === caption || element === captionCanvas) return false;
+        if (element === caption) return false;
         const style = window.getComputedStyle(element);
         const zIndex = Number.parseInt(style.zIndex, 10);
         if (!Number.isFinite(zIndex) || zIndex < 4 || style.display === 'none' || style.visibility === 'hidden') return false;
@@ -1500,25 +1496,15 @@ for (let i = 1; i <= 32; i++) {
       return false;
     };
 
-    const updateCaptionClearZone = () => {
-      if (!caption.classList.contains('visible')) return;
-      const rect = getCaptionTextRect();
-      [captionCanvas, captionBackground].forEach((layer) => {
-        layer.style.setProperty('--caption-hole-x', `${((rect.left + rect.width / 2) / window.innerWidth) * 100}%`);
-        layer.style.setProperty('--caption-hole-y', `${((rect.top + rect.height / 2) / window.innerHeight) * 100}%`);
-        layer.style.setProperty('--caption-hole-rx', `${Math.round(rect.width * 0.68 + 18)}px`);
-        layer.style.setProperty('--caption-hole-ry', `${Math.round(rect.height * 0.95 + 14)}px`);
-        layer.classList.add('caption-clear-zone');
-      });
-    };
-
     const hideCaption = () => {
-      window.clearTimeout(transitionTimer);
-      transitionTimer = null;
       activeSegment = -1;
-      caption.classList.remove('visible', 'is-title', 'is-entering', 'is-leaving');
-      captionCanvas.classList.remove('caption-clear-zone');
-      captionBackground.classList.remove('caption-clear-zone');
+      activeCaptionLine = -1;
+      caption.classList.remove('visible', 'is-title');
+      caption.removeAttribute('aria-label');
+      captionLines.forEach((line) => {
+        line.classList.remove('is-active', 'is-leaving', 'is-preparing');
+        line.textContent = '';
+      });
     };
 
     const updateCaption = () => {
@@ -1539,27 +1525,28 @@ for (let i = 1; i <= 32; i++) {
       if (segmentIndex === activeSegment) return;
 
       activeSegment = segmentIndex;
-      const shouldFadeOut = caption.classList.contains('visible');
-      caption.classList.remove('is-title', 'is-entering', 'is-leaving');
-      if (shouldFadeOut) caption.classList.add('is-leaving');
-      window.clearTimeout(transitionTimer);
-      transitionTimer = window.setTimeout(() => {
-        transitionTimer = null;
-        if (audio.paused || audio.ended) return;
-        caption.classList.remove('visible', 'is-leaving');
-        caption.textContent = segments[segmentIndex];
-        caption.classList.toggle('is-title', segmentIndex === 0);
-        caption.classList.add('visible');
-        void caption.offsetWidth;
-        if (!findCaptionPosition(segmentIndex)) {
-          caption.classList.remove('visible');
-          captionCanvas.classList.remove('caption-clear-zone');
-          captionBackground.classList.remove('caption-clear-zone');
-          return;
-        }
-        updateCaptionClearZone();
-        caption.classList.add('is-entering');
-      }, shouldFadeOut ? 180 : 0);
+      const outgoing = activeCaptionLine >= 0 ? captionLines[activeCaptionLine] : null;
+      const incomingIndex = activeCaptionLine < 0 ? 0 : 1 - activeCaptionLine;
+      const incoming = captionLines[incomingIndex];
+      incoming.textContent = segments[segmentIndex];
+      incoming.classList.remove('is-active', 'is-leaving');
+      incoming.classList.add('is-preparing');
+      caption.setAttribute('aria-label', segments[segmentIndex]);
+      caption.classList.toggle('is-title', segmentIndex === 0);
+      caption.classList.add('visible');
+      void incoming.offsetWidth;
+      if (!findCaptionPosition(segmentIndex)) {
+        hideCaption();
+        return;
+      }
+
+      if (outgoing) {
+        outgoing.classList.remove('is-active');
+        outgoing.classList.add('is-leaving');
+      }
+      incoming.classList.remove('is-preparing');
+      incoming.classList.add('is-active');
+      activeCaptionLine = incomingIndex;
     };
 
     audio.addEventListener('playing', updateCaption);
@@ -1572,8 +1559,7 @@ for (let i = 1; i <= 32; i++) {
     audio.addEventListener('error', hideCaption);
     window.addEventListener('resize', () => {
       if (!caption.classList.contains('visible') || activeSegment < 0) return;
-      if (findCaptionPosition(activeSegment)) updateCaptionClearZone();
-      else hideCaption();
+      if (!findCaptionPosition(activeSegment)) hideCaption();
     });
   };
 })();
