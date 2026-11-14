@@ -1413,8 +1413,7 @@ for (let i = 1; i <= 32; i++) {
     };
   };
   const paragraphs = [
-    'Tháng 11 lại về',
-    'Mang theo cái se lạnh của những ngày cuối năm, tháng 11 cũng là dịp để chúng em bày tỏ lòng biết ơn sâu sắc đến thầy cô – những người lái đò thầm lặng đã và đang dìu dắt bao thế hệ học trò qua những dòng sông tri thức.',
+    'Tháng 11 lại về, mang theo cái se lạnh của những ngày cuối năm, tháng 11 cũng là dịp để chúng em bày tỏ lòng biết ơn sâu sắc đến thầy cô – những người lái đò thầm lặng đã và đang dìu dắt bao thế hệ học trò qua những dòng sông tri thức.',
     'Có lẽ, mỗi người trong chúng em đều có những kỷ niệm riêng về thầy cô. Đó có thể là những lần thầy cô tận tình chỉ bảo, ánh mắt ấm áp khi chúng em đạt thành tích tốt, hoặc những lời động viên khi chúng em vấp ngã. Thầy cô không chỉ truyền đạt kiến thức mà còn rèn luyện cho chúng em lòng dũng cảm, sự kiên trì và tinh thần trách nhiệm. Những bài giảng không chỉ là kiến thức sách vở mà còn là những bài học về cuộc sống, về cách làm người. Thầy cô đã dành trọn tâm huyết và cả thanh xuân để xây dựng nền tảng cho chúng em. Bao năm qua, thầy cô âm thầm cống hiến, hy sinh để mang đến những điều tốt đẹp nhất. Có những lúc chúng em chưa thật sự hiểu hết lời thầy cô nhắn nhủ, nhưng hôm nay nhìn lại, chúng em mới thấy những bài học ấy quý giá biết bao.',
     'Những ngày đầu tiên, khi bước chân vào trường THPT Châu Văn An, chúng em còn bỡ ngỡ với cách học và chưa thuộc tên thầy cô. Chính các thầy cô đã nhẹ nhàng chỉ bảo, động viên chúng em từng chút một. Thầy cô là những người lái đò thầm lặng; mỗi bài giảng, mỗi nụ cười, mỗi lời nhắc nhở đều là những ngọn đèn soi sáng con đường tri thức. Công lao ấy, chúng em luôn khắc cốt ghi tâm. Thầy cô không chỉ truyền đạt kiến thức mà còn là những người cha, người mẹ thứ hai dạy chúng em biết cách làm người, biết yêu thương, sẻ chia và ước mơ. Mỗi khi chúng em vấp ngã, thầy cô nâng đỡ; mỗi khi chúng em lạc lối, thầy cô là ngọn hải đăng soi đường. Những lời dạy của thầy cô sẽ mãi là hành trang quý giá giúp chúng em tự tin bước vào đời.',
     'Có một nghề bụi phấn bám đầy tay, người ta bảo đó là nghề cao quý nhất. Có một nghề không trồng cây vào đất mà mang lại cho đời những trái ngọt, hoa thơm.',
@@ -1427,12 +1426,19 @@ for (let i = 1; i <= 32; i++) {
     const chunks = [];
     let start = 0;
     while (start < words.length) {
-      let end = Math.min(start + 10, words.length);
-      if (end < words.length) {
-        for (let boundary = end; boundary > start + 5; boundary--) {
-          if (/[,.!?;:]$/.test(words[boundary - 1])) {
+      const remainingWords = words.length - start;
+      let end = words.length;
+      if (remainingWords > 20) {
+        const maxEnd = Math.min(start + 20, words.length - 5);
+        const targetEnd = Math.min(start + 13, maxEnd);
+        end = targetEnd;
+        let bestDistance = Infinity;
+        for (let boundary = start + 5; boundary <= maxEnd; boundary += 1) {
+          if (!/[,.!?;:]$/.test(words[boundary - 1])) continue;
+          const distance = Math.abs(boundary - targetEnd);
+          if (distance < bestDistance) {
             end = boundary;
-            break;
+            bestDistance = distance;
           }
         }
       }
