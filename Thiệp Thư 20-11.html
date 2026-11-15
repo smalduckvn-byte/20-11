@@ -2143,7 +2143,7 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
             const MORPH_WAIT_MS = 2200;
             const MORPH_OVERLAY_FADE_MS = 1200;
             const MORPH_OVERLAY_HOLD_MS = 3800;
-            const FIRST_SCENE_DURATION_MS = 91 * 1000;
+            const FIRST_SCENE_DURATION_MS = 100 * 1000;
             const LETTER_DURATION_MS = 2 * 60 * 1000;
             const PRESENTATION_DURATION_MS = FIRST_SCENE_DURATION_MS + LETTER_DURATION_MS;
             const CUPID_FLY_DURATION_MS = 2000;
@@ -2577,6 +2577,8 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
             let spHintClickShown = false, spHintFlyShown = false;
             let spHasZoomedIn = false, spNeedZoomIn = false, spZoomInTime = 0;
             const spZoomInTarget = new THREE.Vector3;
+            let spAutoZoomOutStarted = false;
+            const spAutoZoomOutStart = new THREE.Vector3, spAutoZoomOutTarget = new THREE.Vector3;
             let spIsExploded = false, spExplosionProgress = 0, spExplosionStartTime = 0;
             let spFadeProgress = 0, spFloatingImages = [], spFloatingGroup = null;
             let spDriftTiltAngle = 0, spDriftTiltDir = 1;
@@ -3596,6 +3598,23 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
             function updateSpherePhase() {
                 spTime += 0.01;
                 spUpdateMeteorShower();
+                const autoRun = document.body.classList.contains('presentation-auto');
+                const presentationElapsedMs = performance.now() - presentationStartedAt;
+                if (autoRun && spIntroComplete && presentationElapsedMs >= 30000 && !spAutoZoomOutStarted) {
+                    spAutoZoomOutStarted = true;
+                    spHasZoomedIn = true;
+                    spNeedZoomIn = false;
+                    if (!spZoomInTime) spZoomInTime = Date.now();
+                    spAutoZoomOutStart.copy(camera.position);
+                    const direction = camera.position.clone().sub(controls.target).normalize();
+                    const targetDistance = Math.min(controls.maxDistance, Math.max(12, controls.minDistance * 2));
+                    spAutoZoomOutTarget.copy(controls.target).add(direction.multiplyScalar(targetDistance));
+                }
+                if (autoRun && spAutoZoomOutStarted) {
+                    const progress = Math.max(0, Math.min(1, (presentationElapsedMs - 30000) / 10000));
+                    const eased = progress * progress * (3 - 2 * progress);
+                    camera.position.lerpVectors(spAutoZoomOutStart, spAutoZoomOutTarget, eased);
+                }
                 if (spIntroComplete && !spHintClickShown && spIntroCompleteTime > 0 && Date.now() - spIntroCompleteTime >= SP_HINT_DELAY_MS) {
                     spHintClickShown = true;
                     spShowHint('Click vào nhé');
@@ -3685,7 +3704,6 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
                         }
                     }));
                 } else if (spIntroComplete) {
-                    const autoRun = document.body.classList.contains('presentation-auto');
                     if (autoRun && !spHasZoomedIn && Date.now() - spIntroCompleteTime >= 1200) {
                         spHasZoomedIn = true;
                         spZoomInTime = Date.now();
