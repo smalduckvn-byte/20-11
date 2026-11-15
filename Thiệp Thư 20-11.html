@@ -1323,7 +1323,7 @@ body,#info,#start-label,.passcode-title,.passcode-subtitle,.letter-content,
     </div>
 
     <div id="start-wrap">
-        <div id="start-label">Giữ để bắt đầu</div>
+        <div id="start-label">Chạm để bắt đầu</div>
         <svg viewBox="0 0 68 68">
             <circle class="ring-pulse" cx="34" cy="34" r="28" />
             <circle class="ring-track" cx="34" cy="34" r="26" />
@@ -2143,11 +2143,60 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
             const MORPH_WAIT_MS = 2200;
             const MORPH_OVERLAY_FADE_MS = 1200;
             const MORPH_OVERLAY_HOLD_MS = 3800;
+            const PRESENTATION_DURATION_MS = 4 * 60 * 1000;
+            const LETTER_SEQUENCE_START_MS = 3 * 60 * 1000 + 2 * 1000;
+            let presentationStartedAt = 0;
+            let presentationFinished = false;
             let _preloadedImg = null;
             let morphImageOverlay = null;
             let morphOverlayFadeStartTime = null;
             function sleep(ms) {
                 return new Promise((r => setTimeout(r, ms)));
+            }
+            function finishTimedPresentation() {
+                if (presentationFinished) return;
+                presentationFinished = true;
+                if (typeof window.stopNarration === 'function') window.stopNarration();
+                stopBgMusic();
+                if (cupidLetterState !== 'showingLetter') {
+                    cupidLetterState = 'letterImage';
+                    handleLetterEnvelopeClick();
+                }
+                document.getElementById('sphere-click-hint')?.classList.remove('visible');
+                document.getElementById('btn-flying-corner')?.classList.remove('visible');
+                document.getElementById('photo-gallery-launch')?.classList.remove('visible');
+                document.body.classList.add('presentation-finished');
+            }
+            function startTimedPresentation() {
+                presentationStartedAt = performance.now();
+                presentationFinished = false;
+                document.body.classList.add('presentation-auto');
+                window.setTimeout(() => {
+                    if (presentationFinished || cupidLetterState === 'showingLetter') return;
+                    document.getElementById('sphere-click-hint')?.classList.remove('visible');
+                    document.getElementById('btn-flying-corner')?.classList.remove('visible');
+                    document.getElementById('photo-gallery-launch')?.classList.remove('visible');
+                    startCupidLetterSequence();
+                    window.setTimeout(() => {
+                        if (presentationFinished || cupidLetterState === 'showingLetter') return;
+                        const envelope = document.getElementById('lenv');
+                        if (envelope) {
+                            envelope.click();
+                        } else {
+                            cupidLetterState = 'letterImage';
+                            handleLetterEnvelopeClick();
+                        }
+                    }, CUPID_FLY_DURATION_MS + 800);
+                }, LETTER_SEQUENCE_START_MS);
+                const finishAtDeadline = () => {
+                    const remaining = PRESENTATION_DURATION_MS - (performance.now() - presentationStartedAt);
+                    if (remaining > 0) {
+                        window.setTimeout(finishAtDeadline, remaining);
+                        return;
+                    }
+                    finishTimedPresentation();
+                };
+                window.setTimeout(finishAtDeadline, PRESENTATION_DURATION_MS);
             }
             function createMorphImageOverlay(img) {
                 const w = img.naturalWidth || img.width;
@@ -2308,84 +2357,24 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
                 initScatterParticles();
                 isScatterPhase = true;
                 const wrap = document.getElementById('start-wrap');
-                const ringFill = document.getElementById('ring-fill');
                 const startLabel = document.getElementById('start-label');
                 wrap.style.display = 'flex';
-                var isAndroid = /Android/i.test(navigator.userAgent || '');
-                var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '') || navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
-                var holdTimer = null;
-                var holdStartTime = 0;
-                var HOLD_MS = 1000;
                 var triggered = false;
-                var androidTapCount = 0;
-                if (startLabel) startLabel.textContent = isAndroid ? 'Chạm 2 lần để bắt đầu' : 'Giữ để bắt đầu';
-                function onDown(e) {
+                if (startLabel) startLabel.textContent = 'Chạm để bắt đầu';
+                wrap.addEventListener('click', function (e) {
                     e.preventDefault();
                     if (triggered) return;
-                    if (isAndroid) {
-                        androidTapCount++;
-                        if (androidTapCount === 1) {
-                            if (startLabel) startLabel.textContent = 'Chạm 2 lần để bắt đầu';
-                            return;
-                        }
-                        if (typeof startBgMusic === 'function') {
-                            try {
-                                startBgMusic();
-                            } catch (_) { }
-                        }
-                        if (typeof window.startNarration === 'function') window.startNarration();
-                        triggered = true;
-                        wrap.style.display = 'none';
-                        startAutoPlay();
-                        return;
-                    }
-                    holdStartTime = Date.now();
+                    triggered = true;
                     if (typeof startBgMusic === 'function') {
                         try {
                             startBgMusic();
                         } catch (_) { }
                     }
                     if (typeof window.startNarration === 'function') window.startNarration();
-                    ringFill.style.transition = 'stroke-dashoffset 1s linear';
-                    ringFill.style.strokeDashoffset = '163.36';
-                    void ringFill.offsetHeight;
-                    ringFill.style.strokeDashoffset = '0';
-                    holdTimer = setInterval((function () {
-                        var elapsed = Date.now() - holdStartTime;
-                        if (elapsed >= 500) wrap.classList.add('held');
-                        if (elapsed >= HOLD_MS) {
-                            clearInterval(holdTimer);
-                            holdTimer = null;
-                            triggered = true;
-                            wrap.style.display = 'none';
-                            startAutoPlay();
-                        }
-                    }), 100);
-                }
-                function onUp(e) {
-                    if (isAndroid) return;
-                    var wasHolding = !!holdTimer;
-                    if (holdTimer) {
-                        clearInterval(holdTimer);
-                        holdTimer = null;
-                    }
-                    if (triggered) return;
-                    wrap.classList.remove('held');
-                    if (wasHolding) {
-                        if (typeof stopBgMusic === 'function') {
-                            try {
-                                stopBgMusic();
-                            } catch (_) { }
-                        }
-                        if (typeof window.stopNarration === 'function') window.stopNarration();
-                        ringFill.style.transition = 'stroke-dashoffset 0.3s ease';
-                        ringFill.style.strokeDashoffset = '163.36';
-                    }
-                }
-                wrap.onpointerdown = onDown;
-                wrap.onpointerup = onUp;
-                wrap.onpointercancel = onUp;
-                wrap.onpointerleave = onUp;
+                    wrap.style.display = 'none';
+                    startTimedPresentation();
+                    startAutoPlay();
+                }, { once: true });
             }
             async function startAutoPlay() {
                 isScatterPhase = false;
@@ -2445,6 +2434,7 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
                 }
             }
             function animate() {
+                if (presentationFinished) return;
                 requestAnimationFrame(animate);
                 if (!isInitialized) return;
                 const elapsedTime = clock.getElapsedTime();
@@ -3766,9 +3756,13 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
                     bgMusic.currentTime = 0;
                     var vol = typeof cfg.bgVolume === 'number' ? cfg.bgVolume : 0.55;
                     bgMusic.volume = 0;
-                    bgMusic.play();
+                    var playback = bgMusic.play();
                     bgMusic.volume = vol;
-                    bgMusic.play();
+                    if (playback && typeof playback.catch === 'function') {
+                        playback.catch(function (e) {
+                            console.warn('Không thể phát nhạc nền:', e);
+                        });
+                    }
                 } catch (e) {
                     console.warn('Không thể phát nhạc nền:', e);
                 }
@@ -4249,6 +4243,13 @@ window.setTimeout(function(){
     #narration-toggle:hover{background:#fff;transform:translateY(-1px)}
     #narration-toggle:focus-visible{outline:2px solid #975b68;outline-offset:3px}
     #narration-status{min-height:1em;margin:0;color:#875e68;font:400 .78rem "Be Vietnam Pro",sans-serif}
+    body.presentation-auto #webglCanvas,body.presentation-auto #btn-flying-corner,
+    body.presentation-auto #photo-gallery-launch,body.presentation-auto #lenv{pointer-events:none!important}
+    body.presentation-finished #cupid-letter-frame,body.presentation-finished #cupid-letter-frame *,
+    body.presentation-finished #cupid-letter-frame::before,body.presentation-finished #cupid-letter-frame::after{
+        animation-play-state:paused!important;transition:none!important
+    }
+    body.presentation-finished #cupid-letter-frame .letter-petals{display:none!important}
 </style>
 <script id="narration-controls-script">
     (() => {
