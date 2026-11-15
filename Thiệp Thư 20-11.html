@@ -3931,6 +3931,7 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
  }).observe(img,{attributes:true,attributeFilter:['class']});
  function open(){
   if(env.classList.contains('open'))return;
+  if(typeof window.stopNarration==='function')window.stopNarration();
   env.classList.add('open');
   setTimeout(function(){img.click();},1500);
   setTimeout(function(){env.classList.add('out');},1450);
