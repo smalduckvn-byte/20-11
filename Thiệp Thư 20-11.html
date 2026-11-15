@@ -1394,6 +1394,33 @@ for (let i = 1; i <= 32; i++) {
     { x: 0, y: -20 },
     { x: 0, y: 20 }
   ];
+  window.buildNarrationCaptionCues = (text) => {
+    const paragraphs = text.split(/\n\s*\n/).map((value) => value.trim()).filter(Boolean);
+    const sentences = paragraphs.flatMap((paragraph) =>
+      paragraph.match(/[^.!?]+(?:[.!?]+|$)/g) || [paragraph]
+    ).map((sentence) => sentence.trim()).filter(Boolean);
+    const cues = sentences.flatMap((sentence) => {
+      const words = sentence.match(/\S+/g) || [];
+      const phrases = [];
+      let phrase = '';
+      words.forEach((word) => {
+        if (phrase && phrase.length + word.length + 1 > 48) {
+          phrases.push(phrase);
+          phrase = '';
+        }
+        phrase = phrase ? `${phrase} ${word}` : word;
+      });
+      if (phrase) phrases.push(phrase);
+      return phrases;
+    });
+    return cues.map((value, index) => ({
+      text: value,
+      weight: Math.max(
+        index === 0 ? 45 : 0,
+        Array.from(value).length + (/[.!?,;:]$/.test(value) ? 5 : 0)
+      )
+    }));
+  };
   const getCaptionTextRect = () => {
     const visibleLines = captionLines.filter((line) =>
       line.classList.contains('is-active') ||
@@ -1418,37 +1445,9 @@ for (let i = 1; i <= 32; i++) {
     if (typeof narrationText !== 'string' || !narrationText.trim()) {
       throw new Error('Thiếu nội dung lời dẫn trong cấu hình lá thư.');
     }
-    const paragraphs = narrationText.split(/\n\s*\n/).map((text) => text.trim()).filter(Boolean);
-    const segments = paragraphs.flatMap((paragraph) => {
-      const words = paragraph.split(/\s+/);
-      const chunks = [];
-      let start = 0;
-      while (start < words.length) {
-        const remainingWords = words.length - start;
-        let end = words.length;
-        if (remainingWords > 20) {
-          const maxEnd = Math.min(start + 20, words.length - 5);
-          const targetEnd = Math.min(start + 13, maxEnd);
-          end = targetEnd;
-          let bestDistance = Infinity;
-          for (let boundary = start + 5; boundary <= maxEnd; boundary += 1) {
-            if (!/[,.!?;:]$/.test(words[boundary - 1])) continue;
-            const distance = Math.abs(boundary - targetEnd);
-            if (distance < bestDistance) {
-              end = boundary;
-              bestDistance = distance;
-            }
-          }
-        }
-        chunks.push(words.slice(start, end).join(' '));
-        start = end;
-      }
-      return chunks;
-    });
-    const weights = segments.map((text, index) => {
-      const punctuationWeight = /[.!?]$/.test(text) ? 5 : 0;
-      return Math.max(index === 0 ? 45 : 0, Array.from(text).length + punctuationWeight);
-    });
+    const letterFrame = document.getElementById('cupid-letter-frame');
+    const segments = window.buildNarrationCaptionCues(narrationText);
+    const weights = segments.map((segment) => segment.weight);
     const totalWeight = weights.reduce((sum, weight) => sum + weight, 0);
     let activeSegment = -1;
     let activeCaptionLine = -1;
@@ -1515,6 +1514,10 @@ for (let i = 1; i <= 32; i++) {
         hideCaption();
         return;
       }
+      if (letterFrame?.classList.contains('visible') && letterFrame.classList.contains('narration-cue-mode')) {
+        hideCaption();
+        return;
+      }
 
       const progress = Math.max(0, Math.min(audio.currentTime / audio.duration, 1));
       let remainingWeight = progress * totalWeight;
@@ -1530,10 +1533,10 @@ for (let i = 1; i <= 32; i++) {
       const outgoing = activeCaptionLine >= 0 ? captionLines[activeCaptionLine] : null;
       const incomingIndex = activeCaptionLine < 0 ? 0 : 1 - activeCaptionLine;
       const incoming = captionLines[incomingIndex];
-      incoming.textContent = segments[segmentIndex];
+      incoming.textContent = segments[segmentIndex].text;
       incoming.classList.remove('is-active', 'is-leaving');
       incoming.classList.add('is-preparing');
-      caption.setAttribute('aria-label', segments[segmentIndex]);
+      caption.setAttribute('aria-label', segments[segmentIndex].text);
       caption.classList.toggle('is-title', segmentIndex === 0);
       caption.classList.add('visible');
       void incoming.offsetWidth;
@@ -1559,6 +1562,10 @@ for (let i = 1; i <= 32; i++) {
     audio.addEventListener('pause', hideCaption);
     audio.addEventListener('ended', hideCaption);
     audio.addEventListener('error', hideCaption);
+    if (letterFrame) {
+      const letterModeObserver = new MutationObserver(updateCaption);
+      letterModeObserver.observe(letterFrame, { attributes: true, attributeFilter: ['class'] });
+    }
     window.addEventListener('resize', () => {
       if (!caption.classList.contains('visible') || activeSegment < 0) return;
       if (!findCaptionPosition(activeSegment)) hideCaption();
@@ -1606,7 +1613,7 @@ for (let i = 1; i <= 32; i++) {
                     <div class="letter-photo-halo" aria-hidden="true"></div>
                     <div class="letter-photo-placeholder" aria-hidden="true"><span class="letter-placeholder-mark">❀</span><span>Một bó hoa nhỏ<br>kính tặng Thầy Cô</span></div>
                     <div class="letter-image-wrap" id="letterImageWrap" style="display: none">
-                        <img class="letter-inline-image" id="letterInlineImage" alt="Tập thể lớp chụp ảnh cùng cô giáo trong lớp học" />
+                        <img class="letter-inline-image" id="letterInlineImage" data-asset-src="image/class-photo-20-11.png" alt="Tập thể lớp chụp ảnh cùng cô giáo trong lớp học" />
                         <span class="letter-image-caption">♥</span>
                     </div>
                     <span class="letter-photo-stamp" aria-hidden="true">20<span>✦</span>11</span>
@@ -2775,7 +2782,7 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
             }
             function spCreateWishSprites() {
                 const textPool = SP_BURST_WISH_TEXTS.length ? SP_BURST_WISH_TEXTS : SP_DEFAULT_WISH_TEXTS;
-                const total = isMobileSP ? 24 : 42;
+                const total = textPool.length;
                 const radiusBase = isMobileSP ? 2.8 : 3.8;
                 const radiusSpan = isMobileSP ? 1.8 : 2.6;
                 const yMin = isMobileSP ? 0.2 : -0.4;
@@ -2793,9 +2800,9 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
                     const sprite = new THREE.Sprite(mat);
                     const s = (isMobileSP ? 0.0041 : 0.005) * (0.75 + Math.random() * 1.05);
                     sprite.scale.set(data.width * s, data.height * s, 1);
-                    const angle = Math.random() * Math.PI * 2;
+                    const angle = (i / total) * Math.PI * 2 + (Math.random() - 0.5) * 0.16;
                     const radius = radiusBase + Math.random() * radiusSpan;
-                    sprite.position.set(Math.cos(angle) * radius, yMin + Math.random() * ySpan, Math.sin(angle) * radius);
+                    sprite.position.set(Math.cos(angle) * radius, yMin + ((i + 0.5) / total) * ySpan, Math.sin(angle) * radius);
                     sprite.userData = {
                         angle: angle,
                         radius: radius,
@@ -4356,27 +4363,7 @@ window.setTimeout(function(){
                 slot.textContent = "";
             });
 
-            const paragraphs = narrationText.split(/\n\s*\n/).map((text) => text.trim()).filter(Boolean);
-            const sentences = paragraphs.flatMap((paragraph) =>
-                paragraph.match(/[^.!?]+(?:[.!?]+|$)/g) || [paragraph]
-            ).map((sentence) => sentence.trim()).filter(Boolean);
-            narrationCues = sentences.flatMap((text) => {
-                const words = text.match(/\S+/g) || [];
-                const phrases = [];
-                let phrase = "";
-                words.forEach((word) => {
-                    if (phrase && phrase.length + word.length + 1 > 48) {
-                        phrases.push(phrase);
-                        phrase = "";
-                    }
-                    phrase = phrase ? `${phrase} ${word}` : word;
-                });
-                if (phrase) phrases.push(phrase);
-                return phrases.map((cue) => ({
-                    text: cue,
-                    weight: Array.from(cue).length + (/[.!?,;:]$/.test(cue) ? 5 : 0)
-                }));
-            });
+            narrationCues = window.buildNarrationCaptionCues(narrationText);
 
             const totalCueWeight = narrationCues.reduce((sum, cue) => sum + cue.weight, 0);
             const updateCues = () => {
