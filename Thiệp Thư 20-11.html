@@ -2143,8 +2143,11 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
             const MORPH_WAIT_MS = 2200;
             const MORPH_OVERLAY_FADE_MS = 1200;
             const MORPH_OVERLAY_HOLD_MS = 3800;
-            const PRESENTATION_DURATION_MS = 4 * 60 * 1000;
-            const LETTER_SEQUENCE_START_MS = 1 * 60 * 1000 + 55 * 1000;
+            const FIRST_SCENE_DURATION_MS = 91 * 1000;
+            const LETTER_DURATION_MS = 2 * 60 * 1000;
+            const PRESENTATION_DURATION_MS = FIRST_SCENE_DURATION_MS + LETTER_DURATION_MS;
+            const CUPID_FLY_DURATION_MS = 2000;
+            const LETTER_SEQUENCE_START_MS = FIRST_SCENE_DURATION_MS - CUPID_FLY_DURATION_MS - 800 - 1500;
             let presentationStartedAt = 0;
             let presentationFinished = false;
             let _preloadedImg = null;
@@ -2152,6 +2155,25 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
             let morphOverlayFadeStartTime = null;
             function sleep(ms) {
                 return new Promise((r => setTimeout(r, ms)));
+            }
+            function beginFinalSphereFlyUp() {
+                if (presentationFinished || spIsFinalFlyUp) return;
+                if (!spPhase) {
+                    window.setTimeout(beginFinalSphereFlyUp, 1000);
+                    return;
+                }
+                if (!spIsExploded) {
+                    spTriggerExplosion();
+                    window.setTimeout(beginFinalSphereFlyUp, 6000);
+                    return;
+                }
+                spIsFinalFlyUp = true;
+                spFinalFlyUpStartTime = Date.now();
+                document.getElementById('sphere-click-hint')?.classList.remove('visible');
+                document.getElementById('btn-flying-corner')?.classList.remove('visible');
+                document.getElementById('photo-gallery-launch')?.classList.remove('visible');
+                const background = document.getElementById('sphere-particles-bg');
+                if (background) background.style.opacity = '0';
             }
             function finishTimedPresentation() {
                 if (presentationFinished) return;
@@ -2171,11 +2193,10 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
                 presentationStartedAt = performance.now();
                 presentationFinished = false;
                 document.body.classList.add('presentation-auto');
+                window.setTimeout(beginFinalSphereFlyUp, LETTER_SEQUENCE_START_MS - 8000);
                 window.setTimeout(() => {
                     if (presentationFinished || cupidLetterState === 'showingLetter') return;
-                    document.getElementById('sphere-click-hint')?.classList.remove('visible');
-                    document.getElementById('btn-flying-corner')?.classList.remove('visible');
-                    document.getElementById('photo-gallery-launch')?.classList.remove('visible');
+                    beginFinalSphereFlyUp();
                     startCupidLetterSequence();
                     window.setTimeout(() => {
                         if (presentationFinished || cupidLetterState === 'showingLetter') return;
@@ -2570,7 +2591,6 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
             let spMeteorNextSpawnAt = 0, spMeteorGlowTexture = null;
             let cupidLetterState = 'hidden';
             let cupidFlyStartTime = 0;
-            const CUPID_FLY_DURATION_MS = 2000;
             const CUPID_LETTER_TEXT = cfg.letter && cfg.letter.text ? cfg.letter.text : "Nhân ngày 20/11, chúng em xin cảm ơn Thầy Cô vì những bài học, sự tận tâm và yêu thương đã dành cho chúng em.\n\nKính chúc Thầy Cô luôn mạnh khỏe, bình an và hạnh phúc. Chúng em luôn biết ơn Thầy Cô.";
             function spRandOnSphere(r) {
                 const t = Math.random() * Math.PI * 2, p = Math.acos(2 * Math.random() - 1);
@@ -3665,9 +3685,19 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
                         }
                     }));
                 } else if (spIntroComplete) {
+                    const autoRun = document.body.classList.contains('presentation-auto');
+                    if (autoRun && !spHasZoomedIn && Date.now() - spIntroCompleteTime >= 1200) {
+                        spHasZoomedIn = true;
+                        spZoomInTime = Date.now();
+                        spNeedZoomIn = true;
+                        const dir = camera.position.clone().sub(controls.target).normalize();
+                        spZoomInTarget.copy(controls.target).add(dir.multiplyScalar(controls.minDistance));
+                    }
                     if (spNeedZoomIn) {
                         camera.position.lerp(spZoomInTarget, 0.08);
                         if (camera.position.distanceTo(controls.target) <= controls.minDistance + 0.05) spNeedZoomIn = false;
+                    } else if (autoRun && spHasZoomedIn && !spIsExploded && Date.now() - spZoomInTime >= 1500) {
+                        spTriggerExplosion();
                     }
                     spGroup.rotation.y += 0.001;
                     if (spParticlesMesh) {
