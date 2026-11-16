@@ -3530,77 +3530,117 @@ Kính chúc Thầy Cô luôn dồi dào sức khỏe, tràn đầy niềm vui, s
                 bg.style.opacity = '1';
                 const loader = new THREE.TextureLoader;
                 loader.crossOrigin = 'anonymous';
-                Promise.all(SPHERE_IMAGES.map((url => new Promise((res => loader.load(url, res, undefined, (() => res(null)))))))).then((textures => {
-                    spTextures = [];
-                    spSphereImageUrls = [];
-                    SPHERE_IMAGES.forEach(((url, i) => {
-                        if (textures[i]) {
-                            spTextures.push(textures[i]);
-                            spSphereImageUrls.push(url);
+                const initialImageCount = Math.min(4, SPHERE_IMAGES.length);
+                const remainingImageUrls = SPHERE_IMAGES.slice(initialImageCount);
+                let fallbackTexture = null;
+                function updateLoadedSphereImages() {
+                    if (!spTextures.length) return;
+                    const textureCount = spTextures.length;
+                    const updateMaterial = (material, index) => {
+                        const texture = spTextures[index % textureCount];
+                        if (material.map !== texture) {
+                            material.map = texture;
+                            material.needsUpdate = true;
                         }
-                    }));
-                    if (!spTextures.length) {
-                        const fc = document.createElement('canvas');
-                        fc.width = fc.height = 64;
-                        fc.getContext('2d').fillStyle = '#ff69b4';
-                        fc.getContext('2d').fillRect(0, 0, 64, 64);
-                        spTextures = [new THREE.CanvasTexture(fc)];
-                        spSphereImageUrls = [];
-                    }
-                    spTextures.forEach((t => {
-                        t.colorSpace = THREE.LinearSRGBColorSpace;
-                        t.needsUpdate = true;
-                    }));
-                    spBuildSphere();
-                    spPhase = true;
-                    const canvasEl = renderer.domElement;
-                    function spDown(e) {
-                        const c = e.touches?.[0] || e;
-                        spMouseDownX = c.clientX;
-                        spMouseDownY = c.clientY;
-                        spIsPointerDown = true;
-                        spWasDrag = false;
-                    }
-                    function spMove(e) {
-                        const c = e.touches?.[0] || e;
-                        if (spIsPointerDown) {
-                            if (Math.hypot(c.clientX - spMouseDownX, c.clientY - spMouseDownY) > SP_DRAG_THRESHOLD) spWasDrag = true;
-                        }
-                    }
-                    function spUp() {
-                        spIsPointerDown = false;
-                    }
-                    canvasEl.addEventListener('mousedown', spDown);
-                    canvasEl.addEventListener('mouseup', spUp);
-                    canvasEl.addEventListener('mouseleave', spUp);
-                    canvasEl.addEventListener('mousemove', spMove);
-                    canvasEl.addEventListener('click', (e => spHandleTap(e.clientX, e.clientY)));
-                    canvasEl.addEventListener('touchstart', spDown, {
-                        passive: true
+                    };
+                    spMeshes.forEach((mesh, index) => updateMaterial(mesh.material, index));
+                    spBottomPhotoMeshes.forEach((mesh, index) => {
+                        updateMaterial(mesh.material, index);
+                        mesh.userData.photoIndex = index % textureCount;
                     });
-                    canvasEl.addEventListener('touchmove', spMove, {
-                        passive: true
+                    spFloatingImages.forEach((image, index) => {
+                        if (image.userData.iMat) updateMaterial(image.userData.iMat, index);
                     });
-                    canvasEl.addEventListener('touchend', (e => {
-                        spUp();
-                        if (e.cancelable) e.preventDefault();
-                        const c = e.changedTouches[0];
-                        spHandleTap(c.clientX, c.clientY);
-                    }), {
-                        passive: false
-                    });
-                    document.getElementById('btn-flying-corner').addEventListener('click', (() => {
-                        if (!spIsExploded || spIsFinalFlyUp) return;
-                        spIsFinalFlyUp = true;
-                        spFinalFlyUpStartTime = Date.now();
-                        document.getElementById('sphere-click-hint').classList.remove('visible');
-                        document.getElementById('btn-flying-corner').classList.remove('visible');
-                        document.getElementById('photo-gallery-launch').classList.remove('visible');
-                        bg.style.opacity = '0';
-                        startCupidLetterSequence();
-                    }));
-                    overlay.style.opacity = '0';
+                }
+                function addSphereTexture(url, texture) {
+                    if (!texture) return;
+                    if (fallbackTexture) {
+                        spTextures.shift();
+                        spSphereImageUrls.shift();
+                        fallbackTexture.dispose();
+                        fallbackTexture = null;
+                    }
+                    texture.colorSpace = THREE.LinearSRGBColorSpace;
+                    texture.needsUpdate = true;
+                    spTextures.push(texture);
+                    spSphereImageUrls.push(url);
+                    if (spPhase) updateLoadedSphereImages();
+                }
+                function loadSphereTexture(url) {
+                    return new Promise(resolve => loader.load(url, resolve, undefined, () => resolve(null)));
+                }
+                const initialTextureLoads = SPHERE_IMAGES.slice(0, initialImageCount).map(url =>
+                    loadSphereTexture(url).then(texture => {
+                        addSphereTexture(url, texture);
+                        return texture;
+                    })
+                );
+                await Promise.race([Promise.all(initialTextureLoads), sleep(5000)]);
+                if (!spTextures.length) {
+                    const fc = document.createElement('canvas');
+                    fc.width = fc.height = 64;
+                    fc.getContext('2d').fillStyle = '#ff69b4';
+                    fc.getContext('2d').fillRect(0, 0, 64, 64);
+                    fallbackTexture = new THREE.CanvasTexture(fc);
+                    fallbackTexture.colorSpace = THREE.LinearSRGBColorSpace;
+                    spTextures = [fallbackTexture];
+                    spSphereImageUrls = [''];
+                }
+                spBuildSphere();
+                spPhase = true;
+                const canvasEl = renderer.domElement;
+                function spDown(e) {
+                    const c = e.touches?.[0] || e;
+                    spMouseDownX = c.clientX;
+                    spMouseDownY = c.clientY;
+                    spIsPointerDown = true;
+                    spWasDrag = false;
+                }
+                function spMove(e) {
+                    const c = e.touches?.[0] || e;
+                    if (spIsPointerDown) {
+                        if (Math.hypot(c.clientX - spMouseDownX, c.clientY - spMouseDownY) > SP_DRAG_THRESHOLD) spWasDrag = true;
+                    }
+                }
+                function spUp() {
+                    spIsPointerDown = false;
+                }
+                canvasEl.addEventListener('mousedown', spDown);
+                canvasEl.addEventListener('mouseup', spUp);
+                canvasEl.addEventListener('mouseleave', spUp);
+                canvasEl.addEventListener('mousemove', spMove);
+                canvasEl.addEventListener('click', (e => spHandleTap(e.clientX, e.clientY)));
+                canvasEl.addEventListener('touchstart', spDown, {
+                    passive: true
+                });
+                canvasEl.addEventListener('touchmove', spMove, {
+                    passive: true
+                });
+                canvasEl.addEventListener('touchend', (e => {
+                    spUp();
+                    if (e.cancelable) e.preventDefault();
+                    const c = e.changedTouches[0];
+                    spHandleTap(c.clientX, c.clientY);
+                }), {
+                    passive: false
+                });
+                document.getElementById('btn-flying-corner').addEventListener('click', (() => {
+                    if (!spIsExploded || spIsFinalFlyUp) return;
+                    spIsFinalFlyUp = true;
+                    spFinalFlyUpStartTime = Date.now();
+                    document.getElementById('sphere-click-hint').classList.remove('visible');
+                    document.getElementById('btn-flying-corner').classList.remove('visible');
+                    document.getElementById('photo-gallery-launch').classList.remove('visible');
+                    bg.style.opacity = '0';
+                    startCupidLetterSequence();
                 }));
+                overlay.style.opacity = '0';
+                (async () => {
+                    for (const url of remainingImageUrls) {
+                        addSphereTexture(url, await loadSphereTexture(url));
+                    }
+                    updateLoadedSphereImages();
+                })().catch(error => console.error('Không thể tải ảnh cho cảnh 3D:', error));
             }
             function updateSpherePhase() {
                 spTime += 0.01;
